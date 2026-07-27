@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: acta-inteligente-backend
+    runtime: node
+    rootDir: snap-backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_VISION_MODEL
+        value: gpt-4o-mini
