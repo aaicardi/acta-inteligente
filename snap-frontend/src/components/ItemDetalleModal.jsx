@@ -43,6 +43,8 @@ export default function ItemDetalleModal({ item, onCerrar, onActualizar, onElimi
 
       <div className="space-y-3">
         <Campo label="Referencia" value={item.referencia} onChange={(v) => onActualizar(item.id, { referencia: v })} />
+        <Campo label="Modelo" value={item.modelo} onChange={(v) => onActualizar(item.id, { modelo: v })} />
+        <Campo label="Serial" value={item.serial} onChange={(v) => onActualizar(item.id, { serial: v })} />
         <Campo label="País de origen" value={item.paisOrigen} onChange={(v) => onActualizar(item.id, { paisOrigen: v })} />
         <CampoArea label="Descripción" value={item.descripcion} onChange={(v) => onActualizar(item.id, { descripcion: v })} />
         <Campo label="Marca" value={item.marca} onChange={(v) => onActualizar(item.id, { marca: v })} />
