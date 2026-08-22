@@ -92,6 +92,8 @@ async function procesarZip(zipBuffer) {
         fotosAnalizadas: fotosBase64.length,
         fotos: fotosParaRevision,
         referencia: '',
+        modelo: '',
+        serial: '',
         paisOrigen: '',
         descripcion: '',
         marca: '',
