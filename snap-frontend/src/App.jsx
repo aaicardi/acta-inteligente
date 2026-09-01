@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import EncabezadoForm from './components/EncabezadoForm';
 import ListaItems from './components/ListaItems';
 import CapturaProducto from './components/CapturaProducto';
-import CargarZip from './components/CargarZip';
 import ItemDetalleModal from './components/ItemDetalleModal';
 import Modal from './components/Modal';
+import { AppHeader, ColaChip, BarraExcepcion, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad } from './components/ds';
 import * as db from './lib/db';
 import * as api from './lib/api';
 
@@ -31,16 +31,38 @@ function esFalloDeRed(err) {
   return err instanceof TypeError;
 }
 
+// crypto.randomUUID() solo existe en contextos seguros (https o localhost).
+// Probado en el celular vía IP de LAN por http:// falla en silencio y nunca
+// llega a agregar el producto: con este respaldo funciona en cualquier caso.
+function generarId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function sinCantidad(item) {
+  return item.cantidad === '' || item.cantidad === null || item.cantidad === undefined;
+}
+
+// El número de ítem lo escribe el inspector (corresponde al número de línea
+// de la factura), no se autoasigna: por eso siempre hay que reordenar antes
+// de mostrar la lista o generar el acta, en vez de confiar en el orden de
+// captura.
+function ordenarPorNumero(lista) {
+  return [...lista].sort((a, b) => Number(a.orden) - Number(b.orden));
+}
+
 export default function App() {
   const [pantalla, setPantalla] = useState('cargando');
   const [encabezado, setEncabezado] = useState(encabezadoVacio());
   const [items, setItems] = useState([]);
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
-  const [mostrarZip, setMostrarZip] = useState(false);
   const [mostrarEncabezado, setMostrarEncabezado] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState('');
   const [itemAbiertoId, setItemAbiertoId] = useState(null);
+  const [resumenGenerado, setResumenGenerado] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -62,6 +84,7 @@ export default function App() {
     setEncabezado(enc);
     setItems([]);
     setError('');
+    setResumenGenerado(null);
     await db.guardarEncabezado(enc);
     setPantalla('trabajo');
     setMostrarEncabezado(true);
@@ -98,11 +121,18 @@ export default function App() {
   }, []);
 
   const agregarItem = useCallback(
-    async ({ fotos, cantidad }) => {
-      const id = crypto.randomUUID();
+    async ({ fotos, cantidad, numero }) => {
+      const numeroLimpio = Number(numero);
+      if (!numero || Number.isNaN(numeroLimpio)) {
+        throw new Error('Ingresa el número de ítem de la factura.');
+      }
+      if (items.some((it) => Number(it.orden) === numeroLimpio)) {
+        throw new Error(`El ítem ${numeroLimpio} ya existe. Usa otro número.`);
+      }
+      const id = generarId();
       const nuevo = {
         id,
-        orden: items.length + 1,
+        orden: numeroLimpio,
         referenciaCarpeta: null,
         fotos,
         cantidad,
@@ -121,7 +151,7 @@ export default function App() {
       setMostrarCaptura(false);
       await analizarYActualizar(id, fotos);
     },
-    [items.length, analizarYActualizar]
+    [items, analizarYActualizar]
   );
 
   const reintentarItem = useCallback(
@@ -146,49 +176,6 @@ export default function App() {
     return () => window.removeEventListener('online', alReconectar);
   }, [reintentarItem]);
 
-  const agregarItemsDesdeZip = useCallback(
-    async (itemsBackend) => {
-      const base = items.length;
-      const nuevos = await Promise.all(
-        itemsBackend.map(async (it, idx) => {
-          // El backend solo manda fotos (base64) para items "revisar": el
-          // inspector las necesita para corregir el campo dudoso.
-          const fotos = await Promise.all(
-            (it.fotos || []).map((dataUri) => fetch(dataUri).then((r) => r.blob()))
-          );
-          return {
-            id: crypto.randomUUID(),
-            orden: base + idx + 1,
-            referenciaCarpeta: it.referenciaCarpeta,
-            fotos,
-            cantidad: '',
-            referencia: it.referencia,
-            modelo: it.modelo,
-            serial: it.serial,
-            paisOrigen: it.paisOrigen,
-            descripcion: it.descripcion,
-            marca: it.marca,
-            estado: it.estado,
-            confianza: it.confianza,
-            motivoRevision: it.motivoRevision,
-          };
-        })
-      );
-      setItems((prev) => [...prev, ...nuevos]);
-      await Promise.all(nuevos.map((it) => db.guardarItem(it)));
-    },
-    [items.length]
-  );
-
-  const procesarZip = useCallback(
-    async (archivo) => {
-      const resultado = await api.procesarZip(archivo);
-      await agregarItemsDesdeZip(resultado.items);
-      return resultado;
-    },
-    [agregarItemsDesdeZip]
-  );
-
   const actualizarItem = useCallback((id, cambios) => {
     setItems((prev) => {
       const next = prev.map((it) => (it.id === id ? { ...it, ...cambios } : it));
@@ -197,6 +184,25 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // No se puede repetir número de ítem: valida contra el resto de la lista
+  // antes de guardar y devuelve el mensaje de error para mostrarlo en el
+  // formulario (o '' si quedó bien).
+  const actualizarNumero = useCallback(
+    (id, numero) => {
+      const numeroLimpio = Number(numero);
+      if (numero === '' || numero === null || numero === undefined || Number.isNaN(numeroLimpio)) {
+        return 'Ingresa un número de ítem.';
+      }
+      const duplicado = items.some((it) => it.id !== id && Number(it.orden) === numeroLimpio);
+      if (duplicado) {
+        return `El ítem ${numeroLimpio} ya existe.`;
+      }
+      actualizarItem(id, { orden: numeroLimpio });
+      return '';
+    },
+    [items, actualizarItem]
+  );
 
   const eliminarItem = useCallback((id) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
@@ -207,28 +213,42 @@ export default function App() {
   const cerrarItem = useCallback(() => setItemAbiertoId(null), []);
   const itemAbierto = items.find((it) => it.id === itemAbiertoId) || null;
 
-  // La cantidad es opcional siempre: nunca bloquea "Generar acta". El
-  // inspector puede completarla después, incluso directamente en el Excel
-  // generado (ver spec.md, corregido tras feedback real de uso).
+  const abrirPrimeraRevision = useCallback(() => {
+    const primero = ordenarPorNumero(items).find((it) => it.estado === 'revisar');
+    if (primero) abrirItem(primero.id);
+  }, [items, abrirItem]);
+
+  // La cantidad es opcional siempre: nunca bloquea "Generar acta". La
+  // pantalla de cierre solo la resalta para que el inspector la revise antes
+  // de firmar (ver spec.md, corregido tras feedback real de uso).
   const generarActa = useCallback(async () => {
     setError('');
     setGenerando(true);
     try {
-      const blob = await api.generarActa(encabezado, items);
+      const blob = await api.generarActa(encabezado, ordenarPorNumero(items));
+      const nombreArchivo = `acta_${encabezado.doNo || 'sin_do'}.xlsx`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `acta_${encabezado.doNo || 'sin_do'}.xlsx`;
+      a.download = nombreArchivo;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
 
+      setResumenGenerado({
+        doNo: encabezado.doNo,
+        archivo: nombreArchivo,
+        items: items.length,
+        bultos: encabezado.bultos,
+        peso: encabezado.peso,
+      });
+
       await db.guardarUltimosValores({ ciudad: encabezado.ciudad, deposito: encabezado.deposito });
       await db.vaciarActa();
       setItems([]);
       setEncabezado(encabezadoVacio());
-      setPantalla('inicio');
+      setPantalla('exito');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -237,60 +257,223 @@ export default function App() {
   }, [encabezado, items]);
 
   if (pantalla === 'cargando') {
-    return <div className="flex h-full items-center justify-center text-slate-400">Cargando…</div>;
-  }
-
-  if (pantalla === 'inicio') {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-        <h1 className="mb-2 text-2xl font-bold text-slate-900">Acta Inteligente</h1>
-        <p className="mb-4 text-center text-slate-500">Diligenciamiento de actas de inspección previa con IA</p>
-        <button
-          type="button"
-          onClick={iniciarNuevaActa}
-          className="w-full max-w-xs rounded-xl bg-indigo-600 px-6 py-4 text-lg font-semibold text-white shadow active:bg-indigo-700"
-        >
-          Nueva acta
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            await iniciarNuevaActa();
-            setMostrarEncabezado(false);
-            setMostrarZip(true);
-          }}
-          className="w-full max-w-xs rounded-xl border border-slate-300 bg-white px-6 py-4 text-lg font-medium text-slate-700"
-        >
-          Cargar ZIP
-        </button>
+      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--mono)', fontSize: 'var(--t-13)', color: 'var(--grafito)' }}>
+        Cargando…
       </div>
     );
   }
 
+  if (pantalla === 'inicio') {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 'var(--s5)',
+          padding: 'var(--s5)',
+          background: 'var(--bond)',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', letterSpacing: 'var(--track-eyebrow)', textTransform: 'uppercase', color: 'var(--grafito)' }}>
+          GO.PD.02-F.02
+        </div>
+        <h1 style={{ fontSize: 'var(--t-h2)', fontWeight: 'var(--peso-bold)', letterSpacing: 'var(--track-h2)', color: 'var(--tinta)' }}>Acta Inteligente</h1>
+        <p style={{ fontSize: 'var(--t-base)', lineHeight: 'var(--alto-nota)', color: 'var(--tinta-70)', maxWidth: '320px' }}>
+          Diligenciamiento de actas de inspección previa con IA.
+        </p>
+        <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+          <Boton variante="primaria" talla="lg" onClick={iniciarNuevaActa}>
+            Nueva acta →
+          </Boton>
+        </div>
+      </div>
+    );
+  }
+
+  if (pantalla === 'cierre') {
+    const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
+    const itemsCierre = ordenarPorNumero(items.filter((it) => it.estado !== 'analizando' && it.estado !== 'en_cola'));
+    const faltantes = itemsCierre.filter(sinCantidad).length;
+    return (
+      <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+        <AppHeader
+          titulo={faltantes ? (faltantes === 1 ? 'Falta 1 cantidad' : `Faltan ${faltantes} cantidades`) : 'Cierre del acta'}
+          meta={`D.O. ${encabezado.doNo || '—'}`}
+        />
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+          {error && (
+            <p style={{ borderRadius: 'var(--r)', background: 'var(--falta-bg)', padding: '10px var(--s3)', fontSize: 'var(--t-14)', color: 'var(--falta)' }}>{error}</p>
+          )}
+          <Tarjeta etiqueta="Resumen del acta">
+            <p style={{ fontSize: 'var(--t-14)', lineHeight: 'var(--alto-nota)', color: 'var(--tinta-70)', marginBottom: 'var(--s4)' }}>
+              Verifica el conteo antes de generar. La cantidad es opcional: puedes completarla después, incluso directamente en el Excel.
+            </p>
+            <ResumenActa doNo={encabezado.doNo} items={items.length} bultos={encabezado.bultos} peso={encabezado.peso} />
+          </Tarjeta>
+
+          {pendientesSistema > 0 && (
+            <div
+              style={{
+                background: 'var(--copia-bg)',
+                border: 'var(--bd) solid var(--copia-bd)',
+                borderRadius: 'var(--r)',
+                padding: '10px var(--s3)',
+                fontSize: 'var(--t-14)',
+                fontWeight: 'var(--peso-medio)',
+                color: 'var(--copia)',
+              }}
+            >
+              {pendientesSistema} producto{pendientesSistema === 1 ? '' : 's'} todavía se {pendientesSistema === 1 ? 'está analizando' : 'están analizando'}. Puedes generar el acta igual y completarlo{pendientesSistema === 1 ? '' : 's'} después.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {itemsCierre.map((it) => (
+              <div
+                key={it.id}
+                style={{
+                  background: '#fff',
+                  border: `${sinCantidad(it) ? 'var(--bd-estado)' : 'var(--bd)'} solid ${sinCantidad(it) ? 'var(--falta)' : 'var(--linea)'}`,
+                  borderRadius: 'var(--r)',
+                  padding: '10px var(--s3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--s3)',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: 'var(--t-10)',
+                    fontWeight: 'var(--peso-semi)',
+                    background: 'var(--tinta)',
+                    color: '#fff',
+                    padding: '2px 5px',
+                    borderRadius: 'var(--r-min)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {it.orden}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--t-13)', fontWeight: 'var(--peso-medio)', color: 'var(--tinta)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {it.descripcion || 'Sin descripción'}
+                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-10)', color: 'var(--grafito)', marginTop: '2px', letterSpacing: '.04em' }}>
+                    {it.referencia || '—'}
+                  </div>
+                </div>
+                <div style={{ width: '92px', flexShrink: 0 }}>
+                  <CampoCantidad
+                    valor={it.cantidad ?? ''}
+                    estado={sinCantidad(it) ? 'falta' : 'ok'}
+                    onChange={(e) => {
+                      const digitos = e.target.value.replace(/[^0-9]/g, '');
+                      actualizarItem(it.id, { cantidad: digitos === '' ? '' : Number(digitos) });
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: '#fff', borderTop: 'var(--bd) solid var(--linea)', padding: '10px var(--s3) var(--s3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Boton variante="acta" talla="lg" disabled={generando} onClick={generarActa}>
+            {generando ? 'Generando acta…' : 'Generar acta · GO.PD.02-F.02'}
+          </Boton>
+          <Boton variante="secundaria" talla="md" onClick={() => setPantalla('trabajo')}>
+            Volver a la captura
+          </Boton>
+        </div>
+      </div>
+    );
+  }
+
+  if (pantalla === 'exito' && resumenGenerado) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          overflowY: 'auto',
+          padding: 'var(--s6) var(--s4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--s5)',
+          background: 'var(--bond)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Sello>Diligenciada</Sello>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ fontSize: 'var(--t-h3)', fontWeight: 'var(--peso-bold)', letterSpacing: 'var(--track-h4)', color: 'var(--tinta)' }}>Acta generada</h2>
+          <p style={{ fontSize: 'var(--t-cuerpo-2)', lineHeight: 'var(--alto-nota)', color: 'var(--tinta-70)', marginTop: 'var(--s1)' }}>
+            {resumenGenerado.items} ítem{resumenGenerado.items === 1 ? '' : 's'} en el formato oficial. Descargada en el dispositivo.
+          </p>
+        </div>
+        <Tarjeta etiqueta="Archivo" franja="sello">
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-13)', color: 'var(--tinta)', letterSpacing: 'var(--track-dato)' }}>{resumenGenerado.archivo}</div>
+          <ResumenActa doNo={resumenGenerado.doNo} items={resumenGenerado.items} bultos={resumenGenerado.bultos} peso={resumenGenerado.peso} />
+        </Tarjeta>
+        <Boton variante="secundaria" talla="md" onClick={iniciarNuevaActa}>
+          Nueva acta
+        </Boton>
+      </div>
+    );
+  }
+
+  const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
+  const revisarCount = items.filter((it) => it.estado === 'revisar').length;
+  const itemsOrdenados = ordenarPorNumero(items);
+  const numerosUsados = items.map((it) => it.orden);
+
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col">
-      <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-3">
-        <h1 className="flex-1 truncate text-lg font-bold text-slate-900">Acta Inteligente</h1>
-        <button
-          type="button"
-          onClick={() => setMostrarEncabezado(true)}
-          className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600"
-        >
-          📋 Encabezado
-        </button>
-        <span className="shrink-0 text-sm text-slate-400">{items.length}</span>
-      </header>
+    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+      <AppHeader
+        titulo="Acta en curso"
+        meta={`D.O. ${encabezado.doNo || '—'} · ${items.length} ítem${items.length === 1 ? '' : 's'}`}
+        chip={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => setMostrarEncabezado(true)}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-10)',
+                letterSpacing: 'var(--track-label)',
+                textTransform: 'uppercase',
+                color: 'var(--boli)',
+                background: 'none',
+                border: 'var(--bd) solid var(--boli)',
+                borderRadius: 'var(--r-chip)',
+                padding: '6px 8px',
+                cursor: 'pointer',
+              }}
+            >
+              Encabezado
+            </button>
+            <ColaChip estado={pendientesSistema ? 'cola' : 'sincronizado'}>{pendientesSistema ? `${pendientesSistema} en cola` : 'Sincronizado'}</ColaChip>
+          </div>
+        }
+      />
 
       {error && (
-        <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+        <p style={{ borderBottom: 'var(--bd) solid var(--falta-bd)', background: 'var(--falta-bg)', padding: '8px var(--s4)', fontSize: 'var(--t-14)', color: 'var(--falta)' }}>
+          {error}
+        </p>
       )}
 
-      {/* Vista principal: solo el grid de productos, con su propio scroll,
-          para que el encabezado y los paneles de carga (ahora modales) nunca
-          compitan por espacio ni se vuelvan pesados con cientos de ítems. */}
-      <main className="flex-1 overflow-y-auto p-3 pb-28">
-        <ListaItems items={items} onActualizar={actualizarItem} onAbrir={abrirItem} />
-      </main>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s3)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
+        <BarraExcepcion cantidad={revisarCount} onRevisar={abrirPrimeraRevision} />
+        <ListaItems items={itemsOrdenados} onActualizar={actualizarItem} onAbrir={abrirItem} />
+      </div>
 
       {mostrarEncabezado && (
         <Modal titulo="Encabezado del despacho" onCerrar={() => setMostrarEncabezado(false)}>
@@ -299,15 +482,7 @@ export default function App() {
       )}
 
       {mostrarCaptura && (
-        <Modal titulo="Nuevo producto" onCerrar={() => setMostrarCaptura(false)}>
-          <CapturaProducto onAgregar={agregarItem} onCancelar={() => setMostrarCaptura(false)} />
-        </Modal>
-      )}
-
-      {mostrarZip && (
-        <Modal titulo="Cargar ZIP del registro fotográfico" onCerrar={() => setMostrarZip(false)}>
-          <CargarZip onProcesar={procesarZip} onCancelar={() => setMostrarZip(false)} />
-        </Modal>
+        <CapturaProducto numerosUsados={numerosUsados} onAgregar={agregarItem} onCancelar={() => setMostrarCaptura(false)} />
       )}
 
       {itemAbierto && (
@@ -315,37 +490,20 @@ export default function App() {
           item={itemAbierto}
           onCerrar={cerrarItem}
           onActualizar={actualizarItem}
+          onActualizarNumero={actualizarNumero}
           onEliminar={eliminarItem}
           onReintentar={reintentarItem}
         />
       )}
 
-      <footer className="fixed inset-x-0 bottom-0 mx-auto max-w-md space-y-2 border-t border-slate-200 bg-white p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMostrarCaptura(true)}
-            className="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-base font-semibold text-white active:bg-indigo-700"
-          >
-            + Agregar producto
-          </button>
-          <button
-            type="button"
-            onClick={() => setMostrarZip(true)}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700"
-          >
-            ZIP
-          </button>
-        </div>
-        <button
-          type="button"
-          disabled={generando || items.length === 0}
-          onClick={generarActa}
-          className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white disabled:opacity-40"
-        >
-          {generando ? 'Generando acta…' : 'Generar acta'}
-        </button>
-      </footer>
+      <div style={{ background: '#fff', borderTop: 'var(--bd) solid var(--linea)', padding: '10px var(--s3) var(--s3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <Boton variante="primaria" talla="tap" onClick={() => setMostrarCaptura(true)}>
+          Agregar producto
+        </Boton>
+        <Boton variante="acta" talla="tap" disabled={items.length === 0} onClick={() => setPantalla('cierre')}>
+          Generar acta
+        </Boton>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,139 @@
+/* Acta Inteligente — sistema de diseño v2 (importado desde Claude Design).
+   Tokens, tipografía y animaciones. No se toca el reset de Tailwind: solo se
+   añaden las piezas que Tailwind no cubre (fuentes, keyframes, focus-ring).
+   La fuente de Google se importa desde index.css: un @import debe ser la
+   primera regla del stylesheet final, y este archivo se inserta después de
+   @import "tailwindcss". */
+
+:root {
+  /* --- base · el mundo del documento --- */
+  --tinta: #12181B;
+  --tinta-70: #38454E;
+  --grafito: #6A767E;
+  --bond: #F5F6F4;
+  --bond-2: #E9EBE7;
+  --linea: #D3D7D1;
+
+  /* --- marca · SOLO acciones, nunca estados --- */
+  --boli: #1F3BB3;
+  --boli-fuerte: #182F91;
+  --boli-claro: #5B78E8;
+  --boli-bg: #E4E8FA;
+
+  /* --- estados · NUNCA para marca --- */
+  --sello: #166B43;
+  --sello-bg: #E2F0E8;
+  --sello-bd: #8FBFA6;
+  --copia: #8A6100;
+  --copia-bg: #F6EBD2;
+  --copia-bd: #C08A1A;
+  --falta: #B32946;
+  --falta-bg: #F8DEE3;
+  --falta-bd: #DE9BAA;
+
+  /* --- alias semánticos --- */
+  --texto: var(--tinta);
+  --texto-2: var(--tinta-70);
+  --texto-3: var(--grafito);
+  --texto-sobre-oscuro: var(--bond);
+  --texto-tenue-sobre-oscuro: #B6BEC4;
+  --fondo-app: var(--bond);
+  --fondo-tarjeta: #FFFFFF;
+  --fondo-hundido: var(--bond-2);
+  --fondo-heredado: var(--bond);
+  --borde: var(--linea);
+  --borde-fuerte: var(--tinta);
+  --accion: var(--boli);
+  --accion-press: var(--boli-fuerte);
+  --accion-texto: #FFFFFF;
+  --foco: var(--boli-claro);
+  --vidrio-velo: rgba(245, 246, 244, .82);
+
+  /* --- espacio --- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --tap: 56px;
+  --tap-lg: 64px;
+  --tap-min: 44px;
+  --tap-40: 40px;
+  --ancho-mobile: 375px;
+
+  /* --- forma --- */
+  --r: 4px;
+  --r-chip: 3px;
+  --r-min: 2px;
+  --r-mob: 18px;
+  --r-redondo: 50%;
+  --bd: 1px;
+  --bd-estado: 1.5px;
+  --bd-acento: 2px;
+  --bd-sello: 2.5px;
+  --bd-marca: 4px;
+  --foco-ring: 3px;
+  --foco-offset: 2px;
+
+  /* --- tipografía --- */
+  --sans: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+  --t-h2: 27px;
+  --t-h3: 19px;
+  --t-h4: 18px;
+  --t-titulo-app: 17px;
+  --t-base: 17px;
+  --t-cuerpo-2: 16px;
+  --t-15: 15px;
+  --t-14: 14px;
+  --t-13: 13px;
+  --t-12: 12px;
+  --t-11: 11px;
+  --t-10: 10px;
+  --t-9: 9px;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --peso-semi: 600;
+  --peso-bold: 700;
+  --peso-black: 800;
+  --alto-titulo: 1.25;
+  --alto-base: 1.5;
+  --alto-nota: 1.55;
+  --track-h2: -.02em;
+  --track-h4: -.01em;
+  --track-eyebrow: .16em;
+  --track-label: .12em;
+  --track-badge: .1em;
+  --track-dato: .08em;
+
+  /* --- movimiento --- */
+  --dur-sello: .3s;
+  --dur-brillo: 1.4s;
+  --dur-giro: .8s;
+  --ease-sello: cubic-bezier(.2, 1.4, .4, 1);
+  --ease-lineal: linear;
+}
+
+body {
+  background: var(--bond);
+  color: var(--tinta);
+  font-family: var(--sans);
+  font-size: var(--t-base);
+  line-height: var(--alto-base);
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--boli); }
+a:hover { color: var(--boli-fuerte); }
+
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: var(--foco-ring) solid var(--foco);
+  outline-offset: var(--foco-offset);
+}
+
+@keyframes acta-brillo { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes acta-giro { to { transform: rotate(360deg); } }
+@keyframes acta-sellar {
+  0% { transform: rotate(-4.5deg) scale(1.6); opacity: 0; }
+  60% { opacity: .95; }
+  100% { transform: rotate(-4.5deg) scale(1); opacity: .9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::after, *::before { animation: none !important; transition: none !important; }
+}

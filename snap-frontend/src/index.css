@@ -1,4 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
+@import "./styles/ds-tokens.css";
 
 html, body, #root {
   height: 100%;
@@ -7,6 +9,4 @@ html, body, #root {
 
 body {
   -webkit-tap-highlight-color: transparent;
-  background: #f8fafc;
-  color: #0f172a;
 }

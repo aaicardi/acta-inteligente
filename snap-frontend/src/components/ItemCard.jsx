@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
+import { EstadoBadge, Velo, Skeleton, CampoCantidad } from './ds';
 
-const ESTILOS_ESTADO = {
-  listo: { texto: 'Listo', clase: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  revisar: { texto: 'Revisar', clase: 'bg-amber-100 text-amber-800 border-amber-300' },
-  en_cola: { texto: 'En cola', clase: 'bg-slate-200 text-slate-700 border-slate-300' },
-  analizando: { texto: 'Analizando…', clase: 'bg-blue-100 text-blue-800 border-blue-300' },
-};
+// Capa de sistema (analizando / en_cola) vs capa de persona (listo / revisar):
+// nunca se muestran a la vez — ver Acta Inteligente v2, componente ItemCard.
+const SISTEMA = { analizando: 'analizando', en_cola: 'cola' };
 
-// Tarjeta compacta en grid. El detalle completo (fotos, campos, eliminar) vive
-// en ItemDetalleModal — así "revisar" nunca interrumpe el flujo de seguir
-// agregando productos; el inspector abre el detalle cuando él decide.
 export default function ItemCard({ item, onActualizar, onAbrir }) {
   const [thumbUrl, setThumbUrl] = useState(null);
 
@@ -24,40 +19,112 @@ export default function ItemCard({ item, onActualizar, onAbrir }) {
     return () => URL.revokeObjectURL(url);
   }, [item.fotos]);
 
-  const estilo = ESTILOS_ESTADO[item.estado] || ESTILOS_ESTADO.revisar;
+  const sistema = SISTEMA[item.estado] || null;
+  const estado = sistema ? null : item.estado === 'revisar' ? 'revisar' : 'listo';
   const sinCantidad = item.cantidad === '' || item.cantidad === null || item.cantidad === undefined;
 
   return (
-    <div className={`flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm ${sinCantidad ? 'border-red-300' : 'border-slate-200'}`}>
-      <button type="button" onClick={() => onAbrir(item.id)} className="flex flex-1 flex-col text-left">
-        <div className="flex h-20 items-center justify-center bg-slate-50">
+    <div
+      style={{
+        background: '#fff',
+        border: `var(--bd) solid ${estado === 'revisar' ? 'var(--copia-bd)' : 'var(--linea)'}`,
+        borderRadius: 'var(--r)',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      <button type="button" onClick={() => onAbrir(item.id)} style={{ display: 'block', width: '100%', textAlign: 'left' }}>
+        <div
+          style={{
+            aspectRatio: '1',
+            background: 'var(--bond-2)',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--mono)',
+            fontSize: 'var(--t-9)',
+            color: 'var(--grafito)',
+            letterSpacing: 'var(--track-badge)',
+          }}
+        >
           {thumbUrl ? (
-            <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+            <img src={thumbUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <span className="text-2xl">📦</span>
+            !sistema && 'FOTO'
+          )}
+          <span
+            style={{
+              position: 'absolute',
+              top: '6px',
+              left: '6px',
+              fontFamily: 'var(--mono)',
+              fontSize: 'var(--t-10)',
+              fontWeight: 'var(--peso-semi)',
+              background: 'var(--tinta)',
+              color: '#fff',
+              padding: '2px 5px',
+              borderRadius: 'var(--r-min)',
+            }}
+          >
+            {item.orden ?? ''}
+          </span>
+          {!sistema && (
+            <span style={{ position: 'absolute', top: '6px', right: '6px' }}>
+              <EstadoBadge estado={estado} />
+            </span>
+          )}
+          {sistema && <Velo estado={sistema} />}
+        </div>
+
+        <div style={{ padding: '8px' }}>
+          {sistema === 'analizando' ? (
+            <>
+              <Skeleton />
+              <Skeleton ancho="60%" style={{ marginTop: 'var(--s1)' }} />
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  fontSize: 'var(--t-13)',
+                  fontWeight: 'var(--peso-medio)',
+                  lineHeight: 'var(--alto-titulo)',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  color: sistema ? 'var(--grafito)' : 'var(--tinta)',
+                }}
+              >
+                {item.descripcion || (sistema ? 'Sin analizar' : 'Sin descripción')}
+              </div>
+              {item.referencia && (
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-10)', color: 'var(--grafito)', marginTop: '3px', letterSpacing: '.04em' }}>
+                  {item.referencia}
+                </div>
+              )}
+              {estado === 'revisar' && item.motivoRevision && (
+                <div style={{ fontSize: 'var(--t-11)', color: 'var(--copia)', marginTop: '5px', lineHeight: '1.3', fontWeight: 'var(--peso-medio)' }}>
+                  {item.motivoRevision}
+                </div>
+              )}
+            </>
           )}
         </div>
-        <div className="flex items-start justify-between gap-1 px-2 pt-1.5">
-          <span className="text-[11px] font-semibold text-slate-400">#{item.orden ?? ''}</span>
-          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-tight ${estilo.clase}`}>
-            {estilo.texto}
-          </span>
-        </div>
-        <p className="line-clamp-2 px-2 pb-1.5 pt-0.5 text-xs text-slate-700">
-          {item.descripcion || <span className="italic text-slate-400">sin descripción</span>}
-        </p>
       </button>
 
-      <input
-        type="number"
-        inputMode="numeric"
-        value={item.cantidad ?? ''}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => onActualizar(item.id, { cantidad: e.target.value === '' ? '' : Number(e.target.value) })}
-        placeholder="Cantidad"
-        aria-label="Cantidad"
-        className={`m-1.5 mt-0 rounded-lg border px-2 py-1.5 text-center text-sm ${sinCantidad ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
-      />
+      <div style={{ padding: '0 8px 8px' }}>
+        <CampoCantidad
+          valor={item.cantidad ?? ''}
+          disabled={!!sistema}
+          estado={sinCantidad ? 'neutro' : 'ok'}
+          onChange={(e) => {
+            const digitos = e.target.value.replace(/[^0-9]/g, '');
+            onActualizar(item.id, { cantidad: digitos === '' ? '' : Number(digitos) });
+          }}
+        />
+      </div>
     </div>
   );
 }

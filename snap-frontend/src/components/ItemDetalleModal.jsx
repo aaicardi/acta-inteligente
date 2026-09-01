@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
+import { EstadoBadge, Campo, Boton } from './ds';
 
-const ESTILOS_ESTADO = {
-  listo: { texto: 'Listo', clase: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  revisar: { texto: 'Revisar', clase: 'bg-amber-100 text-amber-800 border-amber-300' },
-  en_cola: { texto: 'En cola', clase: 'bg-slate-200 text-slate-700 border-slate-300' },
-  analizando: { texto: 'Analizando…', clase: 'bg-blue-100 text-blue-800 border-blue-300' },
-};
+const ESTADO_DS = { listo: 'listo', revisar: 'revisar', en_cola: 'neutro', analizando: 'neutro' };
 
-export default function ItemDetalleModal({ item, onCerrar, onActualizar, onEliminar, onReintentar }) {
+export default function ItemDetalleModal({ item, onCerrar, onActualizar, onActualizarNumero, onEliminar, onReintentar }) {
   const [urls, setUrls] = useState([]);
+  const [numeroTexto, setNumeroTexto] = useState(String(item.orden ?? ''));
+  const [errorNumero, setErrorNumero] = useState('');
 
   useEffect(() => {
     const nuevas = (item.fotos || []).map((f) => (f instanceof Blob ? URL.createObjectURL(f) : null)).filter(Boolean);
@@ -17,98 +15,107 @@ export default function ItemDetalleModal({ item, onCerrar, onActualizar, onElimi
     return () => nuevas.forEach((url) => URL.revokeObjectURL(url));
   }, [item.fotos]);
 
-  const estilo = ESTILOS_ESTADO[item.estado] || ESTILOS_ESTADO.revisar;
+  useEffect(() => {
+    setNumeroTexto(String(item.orden ?? ''));
+    setErrorNumero('');
+  }, [item.id, item.orden]);
+
+  function confirmarNumero() {
+    if (numeroTexto === String(item.orden ?? '')) return;
+    const mensaje = onActualizarNumero(item.id, numeroTexto);
+    if (mensaje) {
+      setErrorNumero(mensaje);
+      setNumeroTexto(String(item.orden ?? ''));
+    } else {
+      setErrorNumero('');
+    }
+  }
 
   return (
     <Modal titulo={`Producto #${item.orden ?? ''}`} onCerrar={onCerrar}>
-      <span className={`mb-3 inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${estilo.clase}`}>
-        {estilo.texto}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)', marginBottom: 'var(--s4)' }}>
+        <EstadoBadge estado={ESTADO_DS[item.estado] || 'neutro'}>
+          {item.estado === 'analizando' ? 'Analizando…' : item.estado === 'en_cola' ? 'En cola' : undefined}
+        </EstadoBadge>
+      </div>
 
       {urls.length > 0 && (
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+        <div style={{ display: 'flex', gap: 'var(--s2)', overflowX: 'auto', marginBottom: 'var(--s4)' }}>
           {urls.map((url, idx) => (
-            <img key={idx} src={url} alt="" className="h-20 w-20 shrink-0 rounded-lg border border-slate-200 object-cover" />
+            <img
+              key={idx}
+              src={url}
+              alt=""
+              style={{ width: '80px', height: '80px', flexShrink: 0, borderRadius: 'var(--r-min)', border: 'var(--bd) solid var(--linea)', objectFit: 'cover' }}
+            />
           ))}
         </div>
       )}
 
       {item.referenciaCarpeta && (
-        <p className="mb-2 text-xs text-slate-400">Carpeta ZIP: {item.referenciaCarpeta}</p>
+        <p style={{ fontSize: 'var(--t-11)', color: 'var(--grafito)', marginBottom: 'var(--s2)' }}>Carpeta ZIP: {item.referenciaCarpeta}</p>
       )}
 
       {item.motivoRevision && (
-        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">⚠ {item.motivoRevision}</p>
+        <div
+          style={{
+            background: 'var(--copia-bg)',
+            border: 'var(--bd) solid var(--copia-bd)',
+            borderRadius: 'var(--r)',
+            padding: '10px var(--s3)',
+            fontSize: 'var(--t-14)',
+            fontWeight: 'var(--peso-medio)',
+            lineHeight: 'var(--alto-titulo)',
+            color: 'var(--copia)',
+            marginBottom: 'var(--s4)',
+          }}
+        >
+          {item.motivoRevision}
+        </div>
       )}
 
-      <div className="space-y-3">
-        <Campo label="Referencia" value={item.referencia} onChange={(v) => onActualizar(item.id, { referencia: v })} />
-        <Campo label="Modelo" value={item.modelo} onChange={(v) => onActualizar(item.id, { modelo: v })} />
-        <Campo label="Serial" value={item.serial} onChange={(v) => onActualizar(item.id, { serial: v })} />
-        <Campo label="País de origen" value={item.paisOrigen} onChange={(v) => onActualizar(item.id, { paisOrigen: v })} />
-        <CampoArea label="Descripción" value={item.descripcion} onChange={(v) => onActualizar(item.id, { descripcion: v })} />
-        <Campo label="Marca" value={item.marca} onChange={(v) => onActualizar(item.id, { marca: v })} />
-        <label className="flex flex-col text-sm text-slate-600">
-          Cantidad (opcional; se puede completar después)
-          <input
-            type="number"
-            inputMode="numeric"
-            value={item.cantidad ?? ''}
-            onChange={(e) => onActualizar(item.id, { cantidad: e.target.value === '' ? '' : Number(e.target.value) })}
-            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
-          />
-        </label>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <Campo
+          etiqueta="Número de ítem (factura)"
+          type="text"
+          valor={numeroTexto}
+          error={errorNumero}
+          onChange={(v) => setNumeroTexto(v.replace(/[^0-9]/g, ''))}
+          onBlur={confirmarNumero}
+        />
+        <Campo etiqueta="Referencia" valor={item.referencia} onChange={(v) => onActualizar(item.id, { referencia: v })} />
+        <Campo etiqueta="Modelo" valor={item.modelo} onChange={(v) => onActualizar(item.id, { modelo: v })} />
+        <Campo etiqueta="Serial" valor={item.serial} onChange={(v) => onActualizar(item.id, { serial: v })} />
+        <Campo etiqueta="País de origen" mono={false} valor={item.paisOrigen} onChange={(v) => onActualizar(item.id, { paisOrigen: v })} />
+        <Campo etiqueta="Marca" mono={false} valor={item.marca} onChange={(v) => onActualizar(item.id, { marca: v })} />
+        <Campo etiqueta="Descripción" ancho="wide" mono={false} textarea valor={item.descripcion} onChange={(v) => onActualizar(item.id, { descripcion: v })} />
+        <Campo
+          etiqueta="Cantidad"
+          hint="Opcional; se puede completar después"
+          type="number"
+          valor={item.cantidad ?? ''}
+          onChange={(v) => onActualizar(item.id, { cantidad: v === '' ? '' : Number(v) })}
+        />
       </div>
 
-      <div className="mt-4 flex gap-2">
+      <div style={{ display: 'flex', gap: 'var(--s2)', marginTop: 'var(--s5)' }}>
         {item.estado === 'en_cola' && (
-          <button
-            type="button"
-            onClick={() => onReintentar(item.id)}
-            className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
-          >
+          <Boton variante="primaria" talla="tap" onClick={() => onReintentar(item.id)}>
             Reintentar análisis
-          </button>
+          </Boton>
         )}
-        <button
-          type="button"
+        <Boton
+          variante="secundaria"
+          talla="tap"
           onClick={() => {
             onEliminar(item.id);
             onCerrar();
           }}
-          className="flex-1 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600"
+          style={{ color: 'var(--falta)', border: 'var(--bd-estado) solid var(--falta-bd)' }}
         >
           Eliminar producto
-        </button>
+        </Boton>
       </div>
     </Modal>
-  );
-}
-
-function Campo({ label, value, onChange }) {
-  return (
-    <label className="flex flex-col text-sm text-slate-600">
-      {label}
-      <input
-        type="text"
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
-      />
-    </label>
-  );
-}
-
-function CampoArea({ label, value, onChange }) {
-  return (
-    <label className="flex flex-col text-sm text-slate-600">
-      {label}
-      <textarea
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base"
-      />
-    </label>
   );
 }

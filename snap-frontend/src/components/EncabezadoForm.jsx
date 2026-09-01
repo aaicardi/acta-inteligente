@@ -1,14 +1,16 @@
+import { Campo } from './ds';
+
 const CAMPOS = [
-  { name: 'doNo', label: 'D.O No', type: 'text' },
-  { name: 'cliente', label: 'Cliente', type: 'text' },
-  { name: 'documentoTransporte', label: 'Documento de transporte', type: 'text' },
-  { name: 'deposito', label: 'Depósito', type: 'text' },
-  { name: 'ciudad', label: 'Ciudad', type: 'text' },
-  { name: 'fecha', label: 'Fecha', type: 'date' },
-  { name: 'horaInicio', label: 'Hora inicio', type: 'time' },
-  { name: 'horaFin', label: 'Hora finalización', type: 'time' },
-  { name: 'bultos', label: 'Bultos', type: 'number' },
-  { name: 'peso', label: 'Peso (KG)', type: 'text' },
+  { name: 'doNo', label: 'D.O No', type: 'text', mono: true },
+  { name: 'cliente', label: 'Cliente', type: 'text', mono: false },
+  { name: 'documentoTransporte', label: 'Documento de transporte', type: 'text', mono: true },
+  { name: 'deposito', label: 'Depósito', type: 'text', mono: false },
+  { name: 'ciudad', label: 'Ciudad', type: 'text', mono: false },
+  { name: 'fecha', label: 'Fecha', type: 'date', mono: true },
+  { name: 'horaInicio', label: 'Hora inicio', type: 'time', mono: true },
+  { name: 'horaFin', label: 'Hora finalización', type: 'time', mono: true },
+  { name: 'bultos', label: 'Bultos', type: 'number', mono: true },
+  { name: 'peso', label: 'Peso (KG)', type: 'text', mono: true },
 ];
 
 // El acta oficial guarda la hora como texto "2:25AM" (ver plantilla.md), pero
@@ -35,31 +37,29 @@ function a12Horas(hora24) {
 
 export default function EncabezadoForm({ encabezado, onCambiar }) {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
       {CAMPOS.map((campo) => {
         const esHora = campo.type === 'time';
         return (
-          <label key={campo.name} className="col-span-1 flex flex-col text-sm text-slate-600">
-            {campo.label}
-            <input
-              type={campo.type}
-              placeholder={campo.placeholder}
-              value={esHora ? a24Horas(encabezado[campo.name]) : encabezado[campo.name] ?? ''}
-              onChange={(e) => onCambiar(campo.name, esHora ? a12Horas(e.target.value) : e.target.value)}
-              className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-900"
-            />
-          </label>
+          <Campo
+            key={campo.name}
+            etiqueta={campo.label}
+            type={campo.type}
+            mono={campo.mono}
+            valor={esHora ? a24Horas(encabezado[campo.name]) : (encabezado[campo.name] ?? '')}
+            onChange={(v) => onCambiar(campo.name, esHora ? a12Horas(v) : v)}
+          />
         );
       })}
-      <label className="col-span-2 flex flex-col text-sm text-slate-600">
-        Observaciones
-        <textarea
-          value={encabezado.observaciones ?? ''}
-          onChange={(e) => onCambiar('observaciones', e.target.value)}
-          className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-900"
-          rows={2}
-        />
-      </label>
+      <Campo
+        etiqueta="Observaciones"
+        ancho="wide"
+        mono={false}
+        textarea
+        placeholder="Opcional"
+        valor={encabezado.observaciones ?? ''}
+        onChange={(v) => onCambiar('observaciones', v)}
+      />
     </div>
   );
 }

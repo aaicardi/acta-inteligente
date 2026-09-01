@@ -43,11 +43,3 @@ export async function generarActa(encabezado, items) {
   if (!res.ok) throw await leerError(res, 'No se pudo generar el acta');
   return res.blob();
 }
-
-export async function procesarZip(zipFile) {
-  const formData = new FormData();
-  formData.append('zip', zipFile);
-  const res = await fetch(`${BASE_URL}/procesar-zip`, { method: 'POST', body: formData });
-  if (!res.ok) throw await leerError(res, 'No se pudo procesar el ZIP');
-  return res.json();
-}
