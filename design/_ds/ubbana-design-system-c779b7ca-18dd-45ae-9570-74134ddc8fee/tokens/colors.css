@@ -1,0 +1,45 @@
+:root{
+  --green-100:#EAF7EF;
+  --green-300:#65C495;
+  --green-500:#4CAF7D;
+  --green-600:#3D9A65;
+  --green-700:#2E7A4F;
+  --ink-900:#1E2027;
+  --ink-800:#23252D;
+  --ink-700:#2B2E36;
+  --ink-600:#33363F;
+  --slate-600:#374151;
+  --slate-500:#4B5563;
+  --white:#FFFFFF;
+  --amber-500:#F59E0B;
+  --amber-900:#3A3320;
+  --red-500:#EF4444;
+
+  --color-primary:var(--green-500);
+  --color-primary-hover:var(--green-600);
+  --color-primary-light:var(--green-300);
+  --color-on-primary:var(--white);
+
+  --color-bg-dark:var(--ink-900);
+  --color-bg-dark-2:var(--ink-800);
+  --color-surface-dark:rgba(255,255,255,.08);
+  --color-border-dark:rgba(255,255,255,.12);
+
+  --color-bg-light:var(--white);
+  --color-surface-light:#F5F7F6;
+  --color-border-light:#E3E7E5;
+
+  --color-text-dark:#1E2027;
+  --color-text-on-dark:var(--white);
+  --color-text-on-dark-muted:rgba(255,255,255,.55);
+  --color-text-on-dark-faint:rgba(255,255,255,.35);
+  --color-text-muted:#6B7280;
+
+  --color-success:var(--green-500);
+  --color-warning:var(--amber-500);
+  --color-warning-bg:var(--amber-900);
+  --color-danger:var(--red-500);
+
+  --color-neutral-avatar:var(--slate-600);
+  --color-camera-placeholder:var(--ink-600);
+}

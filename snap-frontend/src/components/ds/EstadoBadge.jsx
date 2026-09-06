@@ -3,6 +3,7 @@ const MAPA = {
   revisar: { t: 'Revisar', bg: 'var(--copia-bg)', c: 'var(--copia)', bd: 'var(--copia-bd)' },
   falta: { t: 'Falta cantidad', bg: 'var(--falta-bg)', c: 'var(--falta)', bd: 'var(--falta-bd)' },
   neutro: { t: 'En cola', bg: '#fff', c: 'var(--tinta-70)', bd: 'var(--linea)' },
+  en_curso: { t: 'En curso', bg: 'var(--boli-bg)', c: 'var(--boli)', bd: 'var(--boli)' },
 };
 
 export default function EstadoBadge({ estado = 'listo', children, punto = true, style }) {

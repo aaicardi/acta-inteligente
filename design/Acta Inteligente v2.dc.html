@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/fuentes.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/colores.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/tipografia.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/espacio.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/forma.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/tokens/movimiento.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/base/reset.css">
+<link rel="stylesheet" href="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/styles.css">
+<script src="_ds/acta-design-system-2ba956dc-5955-45b5-a181-15e905aade10/_ds_bundle.js"></script>
+<style>
+  body { background: var(--bond); }
+  a { color: var(--boli); }
+  a:hover { color: var(--boli-fuerte); }
+</style>
+</helmet>
+
+<section style="padding: 48px 40px 72px; display: flex; flex-direction: column; gap: var(--s6); font-family: var(--sans); background: var(--bond);">
+  <div style="display: flex; flex-direction: column; gap: var(--s2); max-width: 66ch;">
+    <div style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--grafito);">Turno 2 · Acta Inteligente · GO.PD.02-F.02</div>
+    <h1 style="font-size: var(--t-h2); font-weight: var(--peso-bold); letter-spacing: var(--track-h2); line-height: var(--alto-titulo); color: var(--tinta);">Prototipo sobre el sistema de diseño Acta</h1>
+    <p style="font-size: var(--t-base); line-height: var(--alto-nota); color: var(--tinta-70); max-width: 58ch; text-wrap: pretty;"><a href="#2a">2a</a> es el flujo completo con las tres capas de estado separadas. <a href="#2b">2b</a> quita el paso "Analizar" de la cámara. <a href="#2c">2c</a> convierte la revisión en una pregunta por ítem.</p>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: var(--s7); align-items: flex-start;">
+
+    <div id="2a" style="display: flex; flex-direction: column; gap: var(--s3); width: 390px;">
+      <div style="display: flex; align-items: baseline; gap: var(--s2);">
+        <span style="font-family: var(--mono); font-size: var(--t-11); font-weight: var(--peso-semi); letter-spacing: var(--track-badge); text-transform: uppercase; color: #fff; background: var(--tinta); padding: 3px 7px; border-radius: var(--r-min);">2a</span>
+        <span style="font-size: var(--t-h4); font-weight: var(--peso-semi); letter-spacing: var(--track-h4); color: var(--tinta);">Flujo completo</span>
+      </div>
+      <p style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--tinta-70); max-width: 58ch;">Encabezado → captura → excepción → cierre sellado. El estado "falta cantidad" no existe hasta pulsar Generar acta.</p>
+
+      <div style="position: relative; width: 390px; height: 800px; border: var(--bd) solid var(--linea); border-radius: var(--r-mob); overflow: hidden; background: var(--bond); display: flex; flex-direction: column;">
+
+        <div style="flex-shrink: 0;">
+          <x-import component-from-global-scope="AforoDesignSystem_2ba956.AppHeader" titulo="{{ tituloA }}" meta="{{ metaA }}" chip="{{ chipA }}" hint-size="100%,64px"></x-import>
+        </div>
+
+        <sc-if value="{{ mostrarPasos }}">
+          <div style="flex-shrink: 0; background: #fff; border-bottom: var(--bd) solid var(--linea); padding: 8px var(--s4); display: flex; align-items: center; gap: var(--s2);">
+            <sc-for list="{{ pasos }}" as="p" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+                <span style="width: 20px; height: 20px; flex-shrink: 0; border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-10); font-weight: var(--peso-semi); background: {{ p.bg }}; color: {{ p.fg }}; border: var(--bd) solid {{ p.bd }};">{{ p.marca }}</span>
+                <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: {{ p.labelFg }};">{{ p.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="flex: 1; overflow: auto; position: relative;">
+
+          <sc-if value="{{ isInicio }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: var(--s5) var(--s4); display: flex; flex-direction: column; gap: var(--s5);">
+              <div style="display: flex; align-items: center; gap: var(--s3); background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r); padding: 10px var(--s3);">
+                <div style="width: 40px; height: 40px; flex-shrink: 0; background: var(--tinta); color: #fff; border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-14); font-weight: var(--peso-semi); letter-spacing: var(--track-dato);">{{ inspector.iniciales }}</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: var(--t-15) ; font-weight: var(--peso-semi); color: var(--tinta);">{{ inspector.nombre }}</div>
+                  <div style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito); margin-top: 2px;">{{ inspector.cedula }} · {{ inspector.rol }}</div>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: var(--s2);">
+                <h2 style="font-size: var(--t-h3); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta);">Inspección previa</h2>
+                <p style="font-size: var(--t-cuerpo-2); line-height: var(--alto-nota); color: var(--tinta-70);">Toma las fotos. La app propone los datos; tú los confirmas antes de que entren al formato.</p>
+              </div>
+
+              <div onClick="{{ nav.encabezado }}" style="cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="lg" hint-size="100%,64px">Nueva acta →</x-import>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: var(--s3);">
+                <div style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Acta en curso</div>
+                <div onClick="{{ nav.grid }}" style="cursor: pointer;">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Tarjeta" etiqueta="D.O. 2026-04471" franja="boli" hint-size="100%,120px">
+                    <div style="display: flex; align-items: center; gap: var(--s3);">
+                      <div style="flex: 1;">
+                        <div style="font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--tinta);">Comercial JMC S.A.S</div>
+                        <div style="font-family: var(--mono); font-size: var(--t-12); color: var(--grafito); margin-top: 2px;">12 ítems · 2 por revisar · 10:21</div>
+                      </div>
+                      <span style="font-family: var(--mono); font-size: var(--t-15); color: var(--boli);" aria-hidden="true">→</span>
+                    </div>
+                  </x-import>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isEncabezado }}">
+            <div style="padding: var(--s4) var(--s4) 90px; display: flex; flex-direction: column; gap: var(--s4);">
+              <p style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--tinta-70);">Los campos con <span style="font-family: var(--mono);">↺</span> vienen del acta anterior. Revísalos y sigue.</p>
+              <x-import component-from-global-scope="AforoDesignSystem_2ba956.EncabezadoForm" datos="{{ encabezado }}" hint-size="100%,520px"></x-import>
+              <div>
+                <label style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito); display: block; margin-bottom: var(--s1);">Observaciones</label>
+                <textarea placeholder="Opcional" rows="3" style="width: 100%; border: var(--bd-estado) solid var(--linea); border-radius: var(--r-chip); padding: 10px; font-family: var(--sans); font-size: var(--t-15); color: var(--tinta); background: #fff; resize: none;"></textarea>
+              </div>
+            </div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: var(--bd) solid var(--linea); padding: 10px 12px 12px;">
+              <div onClick="{{ nav.captura }}" style="cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">Toma la primera foto →</x-import>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCaptura }}">
+            <div style="position: absolute; inset: 0; background: var(--tinta); display: flex; flex-direction: column;">
+              <div style="flex: 1; position: relative; background: #1B2226;">
+                <div style="position: absolute; inset: var(--s5) var(--s5) auto; height: 300px; border: var(--bd-acento) solid rgba(245,246,244,.45); border-radius: var(--r);"></div>
+                <div style="position: absolute; top: var(--s4); left: 0; right: 0; text-align: center; font-size: var(--t-cuerpo-2); font-weight: var(--peso-medio); color: var(--bond);">Acércate a la etiqueta</div>
+                <div style="position: absolute; bottom: var(--s4); left: var(--s4); right: var(--s4); display: flex; align-items: center; gap: var(--s2);">
+                  <sc-for list="{{ shots }}" as="shot" hint-placeholder-count="3">
+                    <div style="width: 54px; height: 54px; border-radius: var(--r-chip); background: #2A343A; border: var(--bd) solid rgba(245,246,244,.3); display: flex; align-items: flex-end; justify-content: center; font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); color: var(--texto-tenue-sobre-oscuro); padding-bottom: 4px;">{{ shot.tag }}</div>
+                  </sc-for>
+                  <div style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--texto-tenue-sobre-oscuro); margin-left: var(--s1);">{{ shotsHint }}</div>
+                </div>
+              </div>
+              <div style="padding: var(--s4) var(--s4) var(--s5); display: flex; align-items: center; justify-content: space-between; background: var(--tinta);">
+                <div onClick="{{ nav.grid }}" style="width: 84px; font-size: var(--t-15); color: var(--texto-tenue-sobre-oscuro); cursor: pointer;">Cancelar</div>
+                <div onClick="{{ shoot }}" style="width: 80px; height: 80px; border-radius: var(--r-redondo); background: var(--bond); border: 5px solid rgba(245,246,244,.25); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                  <div style="width: 60px; height: 60px; border-radius: var(--r-redondo); background: var(--boli);"></div>
+                </div>
+                <div onClick="{{ finishProduct }}" style="width: 84px; text-align: right; font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--boli-claro); cursor: pointer;">Listo →</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isGrid }}">
+            <div style="padding: var(--s3) var(--s3) 84px; display: flex; flex-direction: column; gap: var(--s3);">
+              <sc-if value="{{ counts.revisar }}">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.BarraExcepcion" cantidad="{{ counts.revisar }}" on-revisar="{{ nav.revision }}" hint-size="100%,60px"></x-import>
+              </sc-if>
+
+              <div style="display: flex; align-items: center; gap: var(--s2);">
+                <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">{{ counts.total }} ítems</span>
+                <span style="font-size: var(--t-12); color: var(--tinta-70);">arrastra o escribe el número para ordenar</span>
+                <div onClick="{{ filtroOn }}" style="margin-left: auto; font-size: var(--t-12); font-weight: var(--peso-medio); color: var(--boli); cursor: pointer; white-space: nowrap;">{{ filtroLabel }}</div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <sc-for list="{{ visibleItems }}" as="item" hint-placeholder-count="4">
+                  <div draggable="{{ true }}" onDragStart="{{ item.onDragStart }}" onDragEnter="{{ item.onDragEnter }}" onDragOver="{{ item.onDragOver }}" onDragEnd="{{ item.onDragEnd }}" style="display: flex; flex-direction: column; gap: 4px; opacity: {{ item.op }};">
+                    <div style="display: flex; align-items: center; gap: 4px; background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r-min); padding: 3px 4px;">
+                      <span style="font-family: var(--mono); font-size: var(--t-12); color: var(--grafito); cursor: grab; padding: 0 2px; line-height: 1;" aria-label="Arrastrar">⣿</span>
+                      <input value="{{ item.numText }}" onFocus="{{ item.onNumFocus }}" onChange="{{ item.onNumInput }}" onBlur="{{ item.onNumCommit }}" inputmode="numeric" aria-label="Número de ítem" style="width: 34px; min-height: 30px; text-align: center; font-family: var(--mono); font-size: var(--t-13); font-weight: var(--peso-semi); color: var(--tinta); background: {{ item.numBg }}; border: var(--bd-estado) solid {{ item.numBd }}; border-radius: var(--r-min); padding: 0;"></input>
+                      <div onClick="{{ item.subir }}" style="margin-left: auto; font-family: var(--mono); font-size: var(--t-12); color: var(--tinta-70); cursor: pointer; padding: 4px 5px; line-height: 1;" aria-label="Subir">↑</div>
+                      <div onClick="{{ item.bajar }}" style="font-family: var(--mono); font-size: var(--t-12); color: var(--tinta-70); cursor: pointer; padding: 4px 5px; line-height: 1;" aria-label="Bajar">↓</div>
+                    </div>
+                    <div onClick="{{ item.open }}" style="cursor: pointer;">
+                      <x-import component-from-global-scope="AforoDesignSystem_2ba956.ItemCard" numero="{{ item.numero }}" descripcion="{{ item.descripcion }}" referencia="{{ item.referencia }}" estado="{{ item.estado }}" razon="{{ item.razon }}" cantidad="{{ item.cantidad }}" falta="{{ item.falta }}" sistema="{{ item.sistema }}" error="{{ item.error }}" hint-size="100%,250px"></x-import>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: var(--bd) solid var(--linea); padding: 10px 12px 12px; display: flex; gap: var(--s2);">
+              <div onClick="{{ nav.captura }}" style="flex: 1; cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">Agregar producto</x-import>
+              </div>
+              <div onClick="{{ generar }}" style="flex: 1; cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="acta" talla="tap" hint-size="100%,56px">{{ ctaActa }}</x-import>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCola }}">
+            <div style="padding: var(--s4); display: flex; flex-direction: column; gap: var(--s4);">
+              <div>
+                <h2 style="font-size: var(--t-h3); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta);">{{ tituloCola }}</h2>
+                <p style="font-size: var(--t-cuerpo-2); line-height: var(--alto-nota); color: var(--tinta-70); margin-top: var(--s1);">Se analizan solas cuando vuelva la señal. Nada se pierde si cierras la app.</p>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{ queueRows }}" as="q" hint-placeholder-count="3">
+                  <div style="background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r); padding: var(--s3); display: flex; align-items: center; gap: var(--s3);">
+                    <div style="width: 44px; height: 44px; background: var(--bond-2); border-radius: var(--r-min); flex-shrink: 0;"></div>
+                    <div style="flex: 1;">
+                      <div style="font-size: var(--t-15); font-weight: var(--peso-medio); color: var(--tinta);">{{ q.name }}</div>
+                      <div style="font-family: var(--mono); font-size: var(--t-12); color: var(--grafito); margin-top: 2px; letter-spacing: var(--track-dato);">{{ q.meta }}</div>
+                    </div>
+                    <x-import component-from-global-scope="AforoDesignSystem_2ba956.ColaChip" estado="{{ q.chip }}" hint-size="auto,26px">{{ q.chipLabel }}</x-import>
+                  </div>
+                </sc-for>
+              </div>
+              <div onClick="{{ nav.grid }}" style="cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="secundaria" talla="md" hint-size="100%,52px">Volver al acta</x-import>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCantidades }}">
+            <div style="padding: var(--s4) var(--s4) 90px; display: flex; flex-direction: column; gap: var(--s4);">
+              <div>
+                <h2 style="font-size: var(--t-h3); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta);">{{ tituloCierre }}</h2>
+                <p style="font-size: var(--t-cuerpo-2); line-height: var(--alto-nota); color: var(--tinta-70); margin-top: var(--s1);">Escribe la cantidad según la factura, no según las fotos.</p>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: var(--s2);">
+                <sc-for list="{{ qtyRows }}" as="r" hint-placeholder-count="6">
+                  <div style="background: #fff; border: {{ r.bdw }} solid {{ r.bd }}; border-radius: var(--r); padding: 10px var(--s3); display: flex; align-items: center; gap: var(--s3);">
+                    <span style="font-family: var(--mono); font-size: var(--t-10); font-weight: var(--peso-semi); background: var(--tinta); color: #fff; padding: 2px 5px; border-radius: var(--r-min); flex-shrink: 0;">{{ r.numero }}</span>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-size: var(--t-13); font-weight: var(--peso-medio); color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.descripcion }}</div>
+                      <div style="font-family: var(--mono); font-size: var(--t-10); color: var(--grafito); margin-top: 2px; letter-spacing: .04em;">{{ r.referencia }}</div>
+                    </div>
+                    <div style="width: 92px; flex-shrink: 0;">
+                      <x-import component-from-global-scope="AforoDesignSystem_2ba956.CampoCantidad" valor="{{ r.cantidad }}" estado="{{ r.estadoCantidad }}" hint-size="92px,44px"></x-import>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: var(--bd) solid var(--linea); padding: 10px 12px 12px;">
+              <div onClick="{{ nav.exito }}" style="cursor: pointer;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="acta" talla="lg" hint-size="100%,64px">Generar acta · GO.PD.02-F.02</x-import>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isExito }}">
+            <div style="padding: var(--s6) var(--s4); display: flex; flex-direction: column; gap: var(--s5);">
+              <div style="display: flex; justify-content: center;">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Sello" hint-size="auto,40px">Diligenciada</x-import>
+              </div>
+              <div style="text-align: center;">
+                <h2 style="font-size: var(--t-h3); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta);">Acta generada</h2>
+                <p style="font-size: var(--t-cuerpo-2); line-height: var(--alto-nota); color: var(--tinta-70); margin-top: var(--s1);">12 ítems en el formato oficial. Guardada en el celular.</p>
+              </div>
+              <x-import component-from-global-scope="AforoDesignSystem_2ba956.Tarjeta" etiqueta="Archivo" franja="sello" hint-size="100%,180px">
+                <div style="font-family: var(--mono); font-size: var(--t-13); color: var(--tinta); letter-spacing: var(--track-dato);">acta-2026-04471.xlsx</div>
+                <div style="font-family: var(--mono); font-size: var(--t-12); color: var(--grafito); margin-top: 2px;">128 KB · 30/08/2026 · 10:42</div>
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.ResumenActa" do-no="2026-04471" items="12" bultos="14" peso="312,50" hint-size="100%,80px"></x-import>
+              </x-import>
+              <div style="display: flex; flex-direction: column; gap: var(--s2);">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">Compartir acta</x-import>
+                <div onClick="{{ nav.inicio }}" style="cursor: pointer;">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="secundaria" talla="md" hint-size="100%,52px">Nueva acta</x-import>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isHistorial }}">
+            <div style="padding: var(--s4) var(--s4) var(--s5); display: flex; flex-direction: column; gap: var(--s4);">
+              <input value="{{ busqueda }}" onChange="{{ onBusqueda }}" placeholder="Buscar por D.O., cliente o fecha" aria-label="Buscar acta" style="width: 100%; min-height: 52px; background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r); padding: 0 var(--s3); font-family: var(--sans); font-size: var(--t-15); color: var(--tinta);"></input>
+
+              <div style="display: flex; flex-direction: column; gap: 0; background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r);">
+                <sc-for list="{{ historial }}" as="h" hint-placeholder-count="4">
+                  <div onClick="{{ h.abrir }}" style="cursor: pointer; padding: var(--s3); border-top: {{ h.sep }} solid var(--linea); display: flex; align-items: center; gap: var(--s3);">
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="display: flex; align-items: baseline; gap: 6px;">
+                        <span style="font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ h.cliente }}</span>
+                        <sc-if value="{{ h.enCurso }}" hint-placeholder-val="{{ true }}">
+                          <span style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-badge); text-transform: uppercase; color: var(--boli); flex-shrink: 0;">· en curso</span>
+                        </sc-if>
+                      </div>
+                      <div style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--grafito); margin-top: 3px;">{{ h.linea }}</div>
+                    </div>
+                    <span style="font-family: var(--mono); font-size: var(--t-14); color: var(--boli); flex-shrink: 0;" aria-hidden="true">→</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isDetalle }}">
+            <div style="padding: var(--s4) var(--s4) var(--s5); display: flex; flex-direction: column; gap: var(--s4);">
+              <div onClick="{{ nav.historial }}" style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--boli); cursor: pointer;">← MIS ACTAS</div>
+              <div>
+                <div style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--grafito);">GO.PD.02-F.02 · GENERADA</div>
+                <h2 style="font-size: var(--t-h3); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta); margin-top: 2px;">Importadora del Oriente</h2>
+              </div>
+
+              <x-import component-from-global-scope="AforoDesignSystem_2ba956.Tarjeta" etiqueta="Datos de la inspección" hint-size="100%,240px">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="D.O. No" valor="2026-04338" mono="{{ true }}" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="Depósito" valor="Zona Franca Rionegro" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="Fecha" valor="27/08/2026" mono="{{ true }}" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="Horas" valor="07:40 → 09:12" mono="{{ true }}" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="Inspector" valor="{{ inspector.nombre }}" ancho="wide" hint-size="100%,72px"></x-import>
+                </div>
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.ResumenActa" do-no="2026-04338" items="9" bultos="11" peso="198,20" hint-size="100%,80px"></x-import>
+              </x-import>
+
+              <div style="display: flex; align-items: baseline; gap: var(--s2);">
+                <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Ítems del acta</span>
+                <span style="font-family: var(--mono); font-size: var(--t-11); color: var(--tinta-70);">{{ detalleTotalFotos }} fotos en total</span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: var(--s4);">
+                <sc-for list="{{ detalleFotos }}" as="g" hint-placeholder-count="4">
+                  <div style="background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r);">
+                    <div style="padding: 10px var(--s3); border-bottom: var(--bd) solid var(--linea); display: flex; align-items: center; gap: var(--s2);">
+                      <span style="font-family: var(--mono); font-size: var(--t-10); font-weight: var(--peso-semi); background: var(--tinta); color: #fff; padding: 2px 5px; border-radius: var(--r-min); flex-shrink: 0;">{{ g.item }}</span>
+                      <span style="font-family: var(--mono); font-size: var(--t-12); letter-spacing: var(--track-dato); color: var(--tinta);">{{ g.ref }}</span>
+                      <span style="margin-left: auto; font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: {{ g.cantFg }};">{{ g.cantText }}</span>
+                    </div>
+
+                    <div style="padding: var(--s3); display: grid; grid-template-columns: 1fr 1fr; gap: 10px var(--s4);">
+                      <sc-for list="{{ g.datos }}" as="d" hint-placeholder-count="6">
+                        <div style="min-width: 0;">
+                          <div style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">{{ d.et }}</div>
+                          <div style="font-family: var(--mono); font-size: var(--t-13); letter-spacing: var(--track-dato); color: {{ d.fg }}; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ d.v }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="padding: 0 var(--s3) var(--s3);">
+                      <div style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Descripción</div>
+                      <div style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--tinta); margin-top: 3px; text-wrap: pretty;">{{ g.desc }}</div>
+                    </div>
+
+                    <div style="padding: 0 var(--s3) var(--s3);">
+                      <div style="display: flex; align-items: baseline; gap: var(--s2); margin-bottom: 6px;">
+                        <span style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Fotos</span>
+                        <span style="font-family: var(--mono); font-size: var(--t-10); color: var(--tinta-70);">{{ g.totalFotos }} · toca para ampliar</span>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <sc-for list="{{ g.fotos }}" as="f" hint-placeholder-count="3">
+                          <div onClick="{{ f.abrir }}" style="aspect-ratio: 1; background: var(--bond-2); border-radius: var(--r-min); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer;">
+                            <span style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">{{ f.etiqueta }}</span>
+                            <span style="font-family: var(--mono); font-size: var(--t-9); color: var(--grafito);">{{ f.indice }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: var(--s2);">
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">Descargar Excel</x-import>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ galeriaAbierta }}">
+            <div style="position: absolute; inset: 0; z-index: 8; background: var(--tinta); display: flex; flex-direction: column;">
+              <div style="flex-shrink: 0; padding: var(--s3) var(--s4); display: flex; align-items: center; gap: var(--s3);">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--texto-tenue-sobre-oscuro);">ÍTEM {{ galeria.item }} · {{ galeria.ref }}</div>
+                  <div style="font-size: var(--t-14); font-weight: var(--peso-medio); color: var(--bond); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ galeria.desc }}</div>
+                </div>
+                <div onClick="{{ cerrarGaleria }}" style="font-family: var(--mono); font-size: var(--t-h4); color: var(--bond); cursor: pointer; padding: 4px 6px; line-height: 1;" aria-label="Cerrar galería">✕</div>
+              </div>
+
+              <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 0 var(--s4);">
+                <div style="width: 100%; aspect-ratio: 1; background: #1B2226; border: var(--bd) solid rgba(245,246,244,.18); border-radius: var(--r-min); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: opacity var(--dur-sello) var(--ease-sello);">
+                  <span style="font-family: var(--mono); font-size: var(--t-12); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--texto-tenue-sobre-oscuro);">{{ galeria.etiqueta }}</span>
+                  <span style="font-family: var(--mono); font-size: var(--t-10); color: var(--texto-tenue-sobre-oscuro);">FOTO {{ galeria.indice }}</span>
+                </div>
+                <div onClick="{{ galeria.previa }}" style="position: absolute; left: var(--s4); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: var(--r-min); background: rgba(18,24,27,.6); border: var(--bd) solid rgba(245,246,244,.28); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-h4); color: var(--bond); cursor: pointer;" aria-label="Foto anterior">←</div>
+                <div onClick="{{ galeria.siguiente }}" style="position: absolute; right: var(--s4); top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: var(--r-min); background: rgba(18,24,27,.6); border: var(--bd) solid rgba(245,246,244,.28); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-h4); color: var(--bond); cursor: pointer;" aria-label="Foto siguiente">→</div>
+              </div>
+
+              <div style="flex-shrink: 0; padding: var(--s4); display: flex; gap: var(--s2); overflow-x: auto;">
+                <sc-for list="{{ galeria.tiras }}" as="t" hint-placeholder-count="4">
+                  <div onClick="{{ t.on }}" style="width: 58px; height: 58px; flex-shrink: 0; background: #1B2226; border: {{ t.bdw }} solid {{ t.bd }}; border-radius: var(--r-min); opacity: {{ t.op }}; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; cursor: pointer;">
+                    <span style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--texto-tenue-sobre-oscuro);">{{ t.etiqueta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ modalOpen }}">
+            <div onClick="{{ closeModal }}" style="position: absolute; inset: 0; background: rgba(18,24,27,.55); z-index: 5;"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: #fff; border-top: var(--bd-acento) solid var(--tinta); padding: var(--s3) var(--s4) var(--s5); max-height: 90%; overflow: auto;">
+              <div style="display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4);">
+                <span style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--grafito);">ÍTEM {{ modal.numero }} / {{ counts.total }}</span>
+                <x-import component-from-global-scope="AforoDesignSystem_2ba956.EstadoBadge" estado="{{ modal.estado }}" hint-size="auto,22px"></x-import>
+                <div onClick="{{ closeModal }}" style="margin-left: auto; font-family: var(--mono); font-size: var(--t-h4); color: var(--tinta-70); cursor: pointer; padding: 0 4px;" aria-label="Cerrar">✕</div>
+              </div>
+
+              <div style="background: var(--copia-bg); border: var(--bd) solid var(--copia-bd); border-radius: var(--r); padding: 10px var(--s3); font-size: var(--t-14); font-weight: var(--peso-medio); line-height: var(--alto-titulo); color: var(--copia); margin-bottom: var(--s4);">{{ modal.razon }}</div>
+
+              <div style="display: flex; gap: var(--s2); margin-bottom: var(--s4);">
+                <div style="flex: 1; aspect-ratio: 1; background: var(--bond-2); border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); color: var(--grafito);">FOTO 1</div>
+                <div style="flex: 1; aspect-ratio: 1; background: var(--bond-2); border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); color: var(--grafito);">FOTO 2</div>
+                <div style="flex: 1; aspect-ratio: 1; border: var(--bd-estado) dashed var(--linea); border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); color: var(--grafito); cursor: pointer;">+ FOTO</div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <sc-for list="{{ modal.fields }}" as="fd" hint-placeholder-count="8">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Campo" etiqueta="{{ fd.etiqueta }}" valor="{{ fd.valor }}" mono="{{ fd.mono }}" ancho="{{ fd.ancho }}" hint="{{ fd.hint }}" vacio="{{ fd.vacio }}" hint-size="100%,88px"></x-import>
+                </sc-for>
+              </div>
+
+              <div style="display: flex; gap: var(--s2); margin-top: var(--s5);">
+                <div onClick="{{ closeModal }}" style="width: 92px; flex-shrink: 0; cursor: pointer;">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="secundaria" talla="tap" hint-size="92px,56px">↺ Foto</x-import>
+                </div>
+                <div onClick="{{ confirmItem }}" style="flex: 1; cursor: pointer;">
+                  <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">{{ modal.cta }}</x-import>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <sc-if value="{{ mostrarTabs }}">
+          <div style="flex-shrink: 0; background: #fff; border-top: var(--bd) solid var(--linea); display: flex;">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+              <div onClick="{{ t.on }}" style="flex: 1; min-height: 60px; padding: 10px 12px 12px; cursor: pointer; border-top: var(--bd-acento) solid {{ t.bd }}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+                <span style="font-size: var(--t-15); font-weight: {{ t.peso }}; color: {{ t.fg }};">{{ t.label }}</span>
+                <span style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">{{ t.meta }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <sc-for list="{{ chipsA }}" as="c" hint-placeholder-count="9">
+          <div onClick="{{ c.on }}" style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-badge); text-transform: uppercase; padding: 5px 8px; border-radius: var(--r-min); cursor: pointer; background: {{ c.bg }}; color: {{ c.fg }}; border: var(--bd) solid {{ c.bd }};">{{ c.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2b" style="display: flex; flex-direction: column; gap: var(--s3); width: 390px;">
+      <div style="display: flex; align-items: baseline; gap: var(--s2);">
+        <span style="font-family: var(--mono); font-size: var(--t-11); font-weight: var(--peso-semi); letter-spacing: var(--track-badge); text-transform: uppercase; color: var(--tinta); background: var(--bond-2); padding: 3px 7px; border-radius: var(--r-min);">2b</span>
+        <span style="font-size: var(--t-h4); font-weight: var(--peso-semi); letter-spacing: var(--track-h4); color: var(--tinta);">Cámara sin pausas</span>
+      </div>
+      <p style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--tinta-70); max-width: 58ch;">No hay botón Analizar. El disparo encola y la lectura ocurre en segundo plano; el contador vive en el header, no en las tarjetas.</p>
+
+      <div style="position: relative; width: 390px; height: 800px; border: var(--bd) solid var(--linea); border-radius: var(--r-mob); overflow: hidden; background: var(--tinta); display: flex; flex-direction: column;">
+        <div style="flex: 1; position: relative; background: #1B2226;">
+          <div style="position: absolute; top: 0; left: 0; right: 0; padding: var(--s4); display: flex; align-items: center; gap: var(--s2);">
+            <span style="font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--bond);">Producto 8</span>
+            <span style="font-family: var(--mono); font-size: var(--t-11); letter-spacing: var(--track-dato); color: var(--texto-tenue-sobre-oscuro);">{{ burstCount }} fotos</span>
+            <div style="margin-left: auto;">
+              <x-import component-from-global-scope="AforoDesignSystem_2ba956.ColaChip" estado="analizando" hint-size="auto,26px">2 leyendo</x-import>
+            </div>
+          </div>
+
+          <div style="position: absolute; inset: 84px var(--s5) auto; height: 290px; border: var(--bd-acento) solid rgba(245,246,244,.45); border-radius: var(--r);"></div>
+          <div style="position: absolute; top: 388px; left: var(--s5); right: var(--s5); display: flex; flex-wrap: wrap; gap: 6px;">
+            <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-badge); text-transform: uppercase; background: var(--sello-bg); color: var(--sello); border: var(--bd) solid var(--sello-bd); padding: 4px 7px; border-radius: var(--r-chip);">● Referencia leída</span>
+            <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-badge); text-transform: uppercase; background: var(--copia-bg); color: var(--copia); border: var(--bd) solid var(--copia-bd); padding: 4px 7px; border-radius: var(--r-chip);">Falta país de origen</span>
+          </div>
+
+          <div style="position: absolute; bottom: 96px; left: var(--s4); right: var(--s4); display: flex; flex-direction: column; gap: var(--s3);">
+            <div style="display: flex; gap: var(--s2);">
+              <sc-for list="{{ burstThumbs }}" as="t" hint-placeholder-count="4">
+                <div style="width: 58px; height: 58px; border-radius: var(--r-chip); background: #2A343A; border: var(--bd) solid {{ t.bd }}; display: flex; align-items: flex-end; justify-content: center; font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); color: {{ t.fg }}; padding-bottom: 4px;">{{ t.tag }}</div>
+              </sc-for>
+            </div>
+            <div style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--texto-tenue-sobre-oscuro);">Toma las fotos que necesites. Se leen solas.</div>
+          </div>
+
+          <div onClick="{{ nextProduct }}" style="position: absolute; bottom: var(--s4); left: var(--s4); right: var(--s4); border: var(--bd) solid rgba(245,246,244,.35); border-radius: var(--r); min-height: 52px; display: flex; align-items: center; justify-content: center; font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--bond); cursor: pointer;">Siguiente producto →</div>
+        </div>
+
+        <div style="padding: var(--s4) var(--s4) var(--s5); display: flex; align-items: center; justify-content: space-between; background: var(--tinta);">
+          <div style="width: 84px;">
+            <div style="font-family: var(--mono); font-size: var(--t-h4); font-weight: var(--peso-semi); color: var(--bond);">7</div>
+            <div style="font-family: var(--mono); font-size: var(--t-9); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--texto-tenue-sobre-oscuro); line-height: 1.3;">en el acta</div>
+          </div>
+          <div onClick="{{ burstShoot }}" style="width: 80px; height: 80px; border-radius: var(--r-redondo); background: var(--bond); border: 5px solid rgba(245,246,244,.25); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 60px; height: 60px; border-radius: var(--r-redondo); background: var(--boli);"></div>
+          </div>
+          <div onClick="{{ nav.grid }}" style="width: 84px; text-align: right; font-size: var(--t-15); font-weight: var(--peso-semi); color: var(--boli-claro); cursor: pointer;">Terminar →</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="display: flex; flex-direction: column; gap: var(--s3); width: 390px;">
+      <div style="display: flex; align-items: baseline; gap: var(--s2);">
+        <span style="font-family: var(--mono); font-size: var(--t-11); font-weight: var(--peso-semi); letter-spacing: var(--track-badge); text-transform: uppercase; color: var(--tinta); background: var(--bond-2); padding: 3px 7px; border-radius: var(--r-min);">2c</span>
+        <span style="font-size: var(--t-h4); font-weight: var(--peso-semi); letter-spacing: var(--track-h4); color: var(--tinta);">Revisión guiada</span>
+      </div>
+      <p style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--tinta-70); max-width: 58ch;">El inspector no busca qué revisar. La app le pasa un ítem por pantalla con la razón como pregunta; lo que ya se leyó queda abajo, confirmable de un golpe.</p>
+
+      <div style="position: relative; width: 390px; height: 800px; border: var(--bd) solid var(--linea); border-radius: var(--r-mob); overflow: hidden; background: var(--bond); display: flex; flex-direction: column;">
+        <div style="background: #fff; border-bottom: var(--bd) solid var(--linea); padding: var(--s3) var(--s4); display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: var(--s3);">
+            <span style="font-family: var(--mono); font-size: var(--t-h4); color: var(--tinta-70); cursor: pointer;" aria-label="Cerrar">✕</span>
+            <span style="font-size: var(--t-titulo-app); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta);">Revisión</span>
+            <span style="margin-left: auto; font-family: var(--mono); font-size: var(--t-12); letter-spacing: var(--track-dato); color: var(--grafito);">{{ wizPos }} / 3</span>
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <sc-for list="{{ wizSteps }}" as="s" hint-placeholder-count="3">
+              <div style="flex: 1; height: 4px; border-radius: var(--r-min); background: {{ s.bg }};"></div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow: auto; padding: var(--s4) var(--s4) 84px; display: flex; flex-direction: column; gap: var(--s4);">
+          <div style="position: relative; aspect-ratio: 4 / 3; background: var(--bond-2); border-radius: var(--r-min); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); color: var(--grafito);">
+            FOTO 1 DE 3 · PELLIZCA PARA ACERCAR
+          </div>
+
+          <div>
+            <h2 style="font-size: var(--t-h4); font-weight: var(--peso-bold); letter-spacing: var(--track-h4); color: var(--tinta); line-height: var(--alto-titulo);">{{ wizTitle }}</h2>
+            <p style="font-size: var(--t-14); line-height: var(--alto-nota); color: var(--copia); margin-top: var(--s1); font-weight: var(--peso-medio);">{{ wizSub }}</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: var(--s2);">
+            <div style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Más probables en estas fotos</div>
+            <sc-for list="{{ wizOptions }}" as="o" hint-placeholder-count="3">
+              <div onClick="{{ o.on }}" style="background: {{ o.bg }}; border: {{ o.bdw }} solid {{ o.bd }}; border-radius: var(--r); min-height: 52px; padding: 0 var(--s3); display: flex; align-items: center; gap: var(--s3); cursor: pointer;">
+                <span style="font-family: var(--mono); font-size: var(--t-13); color: {{ o.markFg }};" aria-hidden="true">{{ o.mark }}</span>
+                <span style="flex: 1; font-size: var(--t-cuerpo-2); font-weight: var(--peso-medio); color: var(--tinta);">{{ o.label }}</span>
+                <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-dato); color: var(--grafito);">{{ o.hint }}</span>
+              </div>
+            </sc-for>
+            <div style="border: var(--bd-estado) dashed var(--linea); border-radius: var(--r); min-height: 52px; display: flex; align-items: center; justify-content: center; font-size: var(--t-15); font-weight: var(--peso-medio); color: var(--tinta-70); cursor: pointer;">Escribir otro país</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito);">Ya leído en las fotos</div>
+            <sc-for list="{{ wizOk }}" as="k" hint-placeholder-count="5">
+              <div style="background: #fff; border: var(--bd) solid var(--linea); border-radius: var(--r-chip); padding: 9px var(--s3); display: flex; align-items: center; gap: var(--s3);">
+                <span style="font-family: var(--mono); font-size: var(--t-10); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--grafito); width: 84px; flex-shrink: 0;">{{ k.label }}</span>
+                <span style="flex: 1; font-size: var(--t-14); font-weight: var(--peso-medio); color: {{ k.fg }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ k.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: var(--bd) solid var(--linea); padding: 10px 12px 12px; display: flex; gap: var(--s2);">
+          <div style="width: 92px; flex-shrink: 0; cursor: pointer;">
+            <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="secundaria" talla="tap" hint-size="92px,56px">↺ Foto</x-import>
+          </div>
+          <div onClick="{{ wizNext }}" style="flex: 1; cursor: pointer;">
+            <x-import component-from-global-scope="AforoDesignSystem_2ba956.Boton" variante="primaria" talla="tap" hint-size="100%,56px">{{ wizCta }}</x-import>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1420,&quot;height&quot;:1120}}">
+const ITEMS = [
+  { numero: 1, referencia: 'REF 90412-B · CN', modelo: 'ECO-223', serial: '', descripcion: 'Caja dispensadora de papel higiénico para baño (grande), en ABS', pais: 'China', marca: 'ecococo', cantidad: '240', estado: 'listo' },
+  { numero: 2, referencia: 'REF 90412-C', modelo: 'DR-220', serial: '', descripcion: 'Pantalón dril azul talla M', pais: '', marca: 'Nomad', cantidad: '', estado: 'revisar', razon: 'Falta país de origen' },
+  { numero: 3, referencia: 'REF 55103 · VN', modelo: 'KL-88', serial: 'SN-4471902', descripcion: 'Chaqueta impermeable con capucha', pais: 'Vietnam', marca: 'Kalea', cantidad: '60', estado: 'listo' },
+  { numero: 4, referencia: 'REF 55110 · PE', modelo: '', serial: '', descripcion: 'Bufanda tejida lana mezcla', pais: 'Perú', marca: '', cantidad: '', estado: 'revisar', razon: 'Marca ilegible en las 3 fotos' },
+  { numero: 5, referencia: 'REF 60031 · CO', modelo: '', serial: '', descripcion: 'Medias deportivas paquete x3', pais: 'Colombia', marca: 'Andes', cantidad: '500', estado: 'listo' },
+  { numero: 6, referencia: 'REF 60042 · CN', modelo: 'AN-14', serial: '', descripcion: 'Gorra béisbol algodón ajustable', pais: 'China', marca: 'Andes', cantidad: '180', estado: 'listo' },
+  { numero: 7, referencia: 'REF 71200 · VN', modelo: '', serial: '', descripcion: 'Sudadera con cierre frontal gris', pais: 'Vietnam', marca: 'Nomad', cantidad: '95', estado: 'listo' },
+  { numero: 8, referencia: 'REF 71214 · IN', modelo: 'NM-07', serial: '', descripcion: 'Camisa manga larga cuadros', pais: 'India', marca: 'Nomad', cantidad: '140', estado: 'listo' },
+  { numero: 9, referencia: 'REF 83301 · CN', modelo: '', serial: '', descripcion: 'Cinturón cuero sintético negro', pais: 'China', marca: 'Kalea', cantidad: '300', estado: 'listo' },
+  { numero: 10, referencia: 'REF 83318 · PE', modelo: '', serial: '', descripcion: 'Guantes tejidos talla única', pais: 'Perú', marca: 'Kalea', cantidad: '220', estado: 'listo' },
+  { numero: 11, referencia: 'REF 90021 · TR', modelo: 'TW-70', serial: '', descripcion: 'Toalla algodón 70x140 cm', pais: 'Turquía', marca: 'Andes', cantidad: '75', estado: 'listo' },
+  { numero: 12, referencia: '', modelo: '', serial: '', descripcion: 'Producto 12', pais: '', marca: '', cantidad: '', estado: null, sistema: 'cola' }
+];
+
+const TITULOS = {
+  inicio: 'Acta Inteligente', encabezado: 'Encabezado del acta', captura: 'Nuevo producto',
+  grid: 'Acta en curso', cola: 'Cola de análisis',
+  cantidades: 'Cierre del acta', exito: 'Acta diligenciada',
+  historial: 'Mis actas', detalle: 'Acta 2026-04338'
+};
+
+const INSPECTOR = { nombre: 'Andrés Quintero', iniciales: 'AQ', cedula: 'C.C. 1.017.442.901', rol: 'Inspector · Rionegro' };
+
+const HISTORIAL = [
+  { doNo: '2026-04471', cliente: 'Comercial JMC S.A.S', fecha: '30/08/2026', hora: '08:15 → 10:42', items: 12, fotos: 38, bultos: '14', peso: '312,50', estado: 'borrador', estadoLabel: 'En curso', inspector: INSPECTOR.nombre },
+  { doNo: '2026-04338', cliente: 'Importadora del Oriente', fecha: '27/08/2026', hora: '07:40 → 09:12', items: 9, fotos: 26, bultos: '11', peso: '198,20', estado: 'firmada', estadoLabel: 'Generada', inspector: INSPECTOR.nombre },
+  { doNo: '2026-04290', cliente: 'Ecococo Andina', fecha: '26/08/2026', hora: '13:05 → 15:48', items: 21, fotos: 71, bultos: '30', peso: '744,00', estado: 'firmada', estadoLabel: 'Generada', inspector: INSPECTOR.nombre },
+  { doNo: '2026-04211', cliente: 'Textiles Andinos S.A.S', fecha: '22/08/2026', hora: '09:20 → 10:35', items: 6, fotos: 17, bultos: '8', peso: '96,40', estado: 'firmada', estadoLabel: 'Generada', inspector: INSPECTOR.nombre }
+];
+
+const DETALLE_FOTOS = [
+  { item: 1, ref: 'SX-8007', modelo: '', serial: '', pais: 'China', marca: '', cantidad: '120', unidad: 'UN',
+    desc: 'Contenedor hermético. Color: transparente. Material: plástico. Medidas: 105x105x25 mm. Capacidad: 1800ML.',
+    fotos: ['Etiqueta', 'Empaque', 'Sello', 'Contenido', 'Bulto'] },
+  { item: 2, ref: 'SX-8012', modelo: 'DP-40', serial: '', pais: 'China', marca: 'ecococo', cantidad: '80', unidad: 'UN',
+    desc: 'Dispensador de jabón en ABS. Color: blanco. Medidas: 90x90x180 mm.',
+    fotos: ['Etiqueta', 'Empaque', 'Contenido'] },
+  { item: 3, ref: 'SX-9014', modelo: '', serial: 'SN-77120', pais: 'Vietnam', marca: 'Kalea', cantidad: '', unidad: 'UN',
+    desc: 'Tapete antideslizante 40x60 cm. Material: caucho y microfibra.',
+    fotos: ['Etiqueta', 'Empaque', 'Marca', 'Bulto'] },
+  { item: 4, ref: 'SX-9015', modelo: '', serial: '', pais: 'Vietnam', marca: 'Kalea', cantidad: '45', unidad: 'UN',
+    desc: 'Cortina de baño con ojales metálicos. Medidas: 180x200 cm.',
+    fotos: ['Etiqueta', 'Empaque'] }
+];
+
+class Component extends DCLogic {
+  state = {
+    a: 'inicio', modal: null, filtro: 'todos', validado: false, shots: 2, burst: 4, wiz: 2,
+    orden: ITEMS.map(i => i.numero), arrastrando: null, editando: null, borrador: '', busqueda: '', galeria: null
+  };
+
+  mover(id, destino) {
+    const orden = this.state.orden.slice();
+    const desde = orden.indexOf(id);
+    if (desde < 0) return;
+    const to = Math.max(0, Math.min(orden.length - 1, destino));
+    if (to === desde) return;
+    orden.splice(desde, 1);
+    orden.splice(to, 0, id);
+    this.setState({ orden });
+  }
+
+  go = (s) => () => this.setState({ a: s, modal: null });
+
+  renderVals() {
+    const { a, modal, filtro, validado, shots, burst, wiz, orden, arrastrando, editando, borrador, busqueda, galeria } = this.state;
+    const R = React.createElement;
+    const ordenados = orden.map((id, idx) => {
+      const base = ITEMS.find(i => i.numero === id);
+      return { ...base, id, pos: idx + 1 };
+    });
+
+    const nav = {};
+    Object.keys(TITULOS).forEach(k => { nav[k] = this.go(k); });
+    nav.revision = () => this.setState({ a: 'grid', filtro: 'revisar', modal: 2 });
+
+    const enCola = ordenados.filter(i => i.sistema).length;
+    const counts = {
+      total: ordenados.length,
+      revisar: ordenados.filter(i => i.estado === 'revisar').length,
+      listo: ordenados.filter(i => i.estado === 'listo').length,
+      cola: enCola,
+      faltan: ordenados.filter(i => !i.cantidad && !i.sistema).length
+    };
+
+    // Capa 2 (sistema) → capa 3 (persona, solo tras validar) → capa 1 (ítem)
+    const decorate = (it) => {
+      const falta = validado && !it.cantidad && !it.sistema;
+      const editandoEste = editando === it.id;
+      return {
+        ...it,
+        numero: it.pos,
+        estado: it.sistema || falta ? null : it.estado,
+        razon: it.sistema || falta ? null : it.razon,
+        falta,
+        error: falta ? 'Escribe la cantidad' : null,
+        sistema: it.sistema || null,
+        open: () => this.setState({ modal: it.id }),
+        op: arrastrando === it.id ? 0.45 : 1,
+        numText: editandoEste ? borrador : String(it.pos),
+        numBd: editandoEste ? 'var(--boli)' : 'var(--linea)',
+        numBg: editandoEste ? 'var(--boli-bg)' : '#fff',
+        onNumFocus: () => this.setState({ editando: it.id, borrador: String(it.pos) }),
+        onNumInput: (e) => this.setState({ borrador: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) }),
+        onNumCommit: () => {
+          const n = parseInt(borrador, 10);
+          this.setState({ editando: null, borrador: '' });
+          if (!isNaN(n)) this.mover(it.id, n - 1);
+        },
+        onDragStart: () => this.setState({ arrastrando: it.id }),
+        onDragEnter: () => { if (arrastrando && arrastrando !== it.id) this.mover(arrastrando, it.pos - 1); },
+        onDragOver: (e) => e.preventDefault(),
+        onDragEnd: () => this.setState({ arrastrando: null }),
+        subir: () => this.mover(it.id, it.pos - 2),
+        bajar: () => this.mover(it.id, it.pos)
+      };
+    };
+
+    const soloRevisar = filtro === 'revisar';
+    const pasa = (i) => !soloRevisar || i.estado === 'revisar';
+
+    const DS = window.AforoDesignSystem_2ba956 || {};
+    const chipA = enCola && DS.ColaChip
+      ? R(DS.ColaChip, { estado: 'cola' }, enCola + ' en cola')
+      : (DS.ColaChip ? R(DS.ColaChip, { estado: 'sincronizado' }, 'Sincronizada') : null);
+
+    const mItem = ordenados.find(i => i.id === modal);
+    const modalVals = mItem ? {
+      numero: mItem.pos,
+      estado: mItem.estado || 'neutro',
+      razon: mItem.razon
+        ? mItem.razon + '. No aparece en ninguna de las 3 fotos.'
+        : 'Todo se leyó en las fotos. Revisa y confirma.',
+      cta: 'Confirmar y siguiente →',
+      fields: [
+        { etiqueta: 'Referencia', valor: mItem.referencia || '—', mono: true, ancho: 'wide', vacio: !mItem.referencia },
+        { etiqueta: 'Modelo', valor: mItem.modelo || 'No aparece', mono: true, vacio: !mItem.modelo, hint: mItem.modelo ? null : 'Opcional en el formato' },
+        { etiqueta: 'Serial', valor: mItem.serial || 'No aparece', mono: true, vacio: !mItem.serial, hint: mItem.serial ? null : 'Opcional en el formato' },
+        { etiqueta: 'País de origen', valor: mItem.pais || 'Ilegible', mono: false, vacio: !mItem.pais, hint: mItem.pais ? null : 'Escríbelo o vuelve a tomar la foto' },
+        { etiqueta: 'Marca', valor: mItem.marca || 'Ilegible', mono: false, vacio: !mItem.marca },
+        { etiqueta: 'Descripción', valor: mItem.descripcion, mono: false, ancho: 'wide' },
+        { etiqueta: 'Cantidad · factura', valor: mItem.cantidad || '—', mono: true, vacio: !mItem.cantidad, hint: mItem.cantidad ? null : 'Se escribe al cerrar el acta' },
+        { etiqueta: 'Unidad', valor: 'UN', mono: true }
+      ]
+    } : null;
+
+    const chipsA = Object.keys(TITULOS).concat(['modal ítem']).map(k => {
+      const esModal = k === 'modal ítem';
+      const on = esModal ? !!modal : (a === k && !modal);
+      return {
+        label: k,
+        on: esModal ? nav.revision : this.go(k),
+        bg: on ? 'var(--tinta)' : 'transparent',
+        fg: on ? '#fff' : 'var(--grafito)',
+        bd: on ? 'var(--tinta)' : 'var(--linea)'
+      };
+    });
+
+    return {
+      nav, counts, chipA, chipsA, soloRevisar,
+      mostrarTabs: ['inicio', 'historial', 'detalle'].indexOf(a) >= 0,
+      tabs: [
+        { key: 'inicio', label: 'Inspección', meta: 'Diligenciar', dest: 'inicio', activa: a === 'inicio' },
+        { key: 'historial', label: 'Actas', meta: '4 guardadas', dest: 'historial', activa: a === 'historial' || a === 'detalle' }
+      ].map(t => ({
+        ...t,
+        on: this.go(t.dest),
+        fg: t.activa ? 'var(--tinta)' : 'var(--grafito)',
+        peso: t.activa ? 'var(--peso-bold)' : 'var(--peso-medio)',
+        bd: t.activa ? 'var(--tinta)' : 'transparent'
+      })),
+      busqueda,
+      onBusqueda: (e) => this.setState({ busqueda: e.target.value }),
+      verTodos: () => this.setState({ filtro: 'todos' }),
+      verRevisar: () => this.setState({ filtro: 'revisar' }),
+      filtroLabel: soloRevisar ? 'Ver los ' + counts.total + ' ítems' : 'Ver solo por revisar · ' + counts.revisar,
+      filtroOn: soloRevisar ? () => this.setState({ filtro: 'todos' }) : () => this.setState({ filtro: 'revisar' }),
+      pasos: [
+        { n: '1', label: 'Encabezado' },
+        { n: '2', label: 'Productos' },
+        { n: '3', label: 'Cierre' }
+      ].map(p => {
+        const idx = ['encabezado', 'captura', 'grid', 'cola', 'cantidades'].indexOf(a);
+        const actual = idx <= 0 ? 1 : idx === 4 ? 3 : 2;
+        const n = parseInt(p.n, 10);
+        const hecho = n < actual, activo = n === actual;
+        return {
+          label: p.label,
+          marca: hecho ? '●' : p.n,
+          bg: activo ? 'var(--tinta)' : hecho ? 'var(--sello-bg)' : '#fff',
+          fg: activo ? '#fff' : hecho ? 'var(--sello)' : 'var(--grafito)',
+          bd: activo ? 'var(--tinta)' : hecho ? 'var(--sello-bd)' : 'var(--linea)',
+          labelFg: activo ? 'var(--tinta)' : 'var(--grafito)'
+        };
+      }),
+      mostrarPasos: ['encabezado', 'captura', 'grid', 'cola', 'cantidades'].indexOf(a) >= 0,
+      tituloA: TITULOS[a] || 'Acta Inteligente',
+      metaA: a === 'historial'
+        ? INSPECTOR.iniciales + ' · ' + INSPECTOR.cedula.toUpperCase()
+        : a === 'detalle'
+          ? 'D.O. 2026-04338 · ' + INSPECTOR.iniciales + ' · 27/08/2026'
+          : 'D.O. 2026-04471 · ' + INSPECTOR.iniciales + ' · RIONEGRO',
+      isInicio: a === 'inicio', isEncabezado: a === 'encabezado', isCaptura: a === 'captura',
+      isGrid: a === 'grid', isCola: a === 'cola',
+      isCantidades: a === 'cantidades', isExito: a === 'exito',
+      visibleItems: ordenados.filter(pasa).map(decorate),
+      ordenLibre: filtro === 'todos',
+      inspector: INSPECTOR,
+      isHistorial: a === 'historial', isDetalle: a === 'detalle',
+      historial: HISTORIAL.filter(h => {
+        const q = busqueda.trim().toLowerCase();
+        return !q || (h.doNo + ' ' + h.cliente + ' ' + h.fecha).toLowerCase().indexOf(q) >= 0;
+      }).map((h, i) => ({
+        ...h,
+        abrir: () => this.setState({ a: h.estado === 'borrador' ? 'grid' : 'detalle', modal: null }),
+        enCurso: h.estado === 'borrador',
+        sep: i === 0 ? '0' : 'var(--bd)',
+        linea: h.fecha + ' · D.O. ' + h.doNo + ' · ' + h.items + ' ítems · ' + h.fotos + ' fotos'
+      })),
+      detalleFotos: DETALLE_FOTOS.map(g => ({
+        ...g,
+        cantText: g.cantidad ? g.cantidad + ' ' + g.unidad : 'Sin cantidad',
+        cantFg: g.cantidad ? 'var(--tinta)' : 'var(--grafito)',
+        datos: [
+          { et: 'Referencia', v: g.ref || 'No dice', vacio: !g.ref },
+          { et: 'País de origen', v: g.pais || 'No dice', vacio: !g.pais },
+          { et: 'Modelo', v: g.modelo || 'No dice', vacio: !g.modelo },
+          { et: 'Serial', v: g.serial || 'No dice', vacio: !g.serial },
+          { et: 'Marca', v: g.marca || 'No dice', vacio: !g.marca },
+          { et: 'Cantidad', v: g.cantidad ? g.cantidad + ' ' + g.unidad : '—', vacio: !g.cantidad }
+        ].map(d => ({ ...d, fg: d.vacio ? 'var(--grafito)' : 'var(--tinta)' })),
+        totalFotos: g.fotos.length + (g.fotos.length === 1 ? ' foto' : ' fotos'),
+        fotos: g.fotos.map((f, i) => ({
+          etiqueta: f,
+          indice: (i + 1) + '/' + g.fotos.length,
+          abrir: () => this.setState({ galeria: { item: g.item, foto: i } })
+        }))
+      })),
+      galeriaAbierta: !!galeria,
+      galeria: galeria ? (() => {
+        const g = DETALLE_FOTOS.find(x => x.item === galeria.item);
+        const total = g.fotos.length;
+        const i = galeria.foto;
+        const salta = (d) => () => this.setState({ galeria: { item: g.item, foto: (i + d + total) % total } });
+        return {
+          item: g.item, ref: g.ref, desc: g.desc,
+          etiqueta: g.fotos[i], indice: (i + 1) + ' / ' + total,
+          previa: salta(-1), siguiente: salta(1),
+          tiras: g.fotos.map((f, k) => ({
+            etiqueta: f,
+            activa: k === i,
+            bd: k === i ? 'var(--boli)' : 'var(--linea)',
+            bdw: k === i ? 'var(--bd-estado)' : 'var(--bd)',
+            op: k === i ? 1 : 0.55,
+            on: () => this.setState({ galeria: { item: g.item, foto: k } })
+          }))
+        };
+      })() : null,
+      cerrarGaleria: () => this.setState({ galeria: null }),
+      detalleTotalFotos: DETALLE_FOTOS.reduce((n, g) => n + g.fotos.length, 0),
+      encabezado: {
+        doNo: '2026-04471', cliente: 'Comercial JMC S.A.S', deposito: 'Zona Franca Rionegro',
+        bultos: '14', peso: '312,50', horaInicio: '08:15', horaFin: '--:--'
+      },
+      ctaActa: counts.faltan
+        ? 'Generar acta · faltan ' + counts.faltan
+        : 'Generar acta',
+      generar: () => this.setState({ a: 'cantidades', modal: null, filtro: 'todos', validado: true }),
+      tituloCierre: counts.faltan ? 'Faltan ' + counts.faltan + ' cantidades' : 'Cierre del acta',
+      qtyRows: ordenados.filter(i => !i.sistema).map(i => ({
+        numero: i.pos, descripcion: i.descripcion, referencia: i.referencia || '—',
+        cantidad: i.cantidad,
+        estadoCantidad: i.cantidad ? 'ok' : 'falta',
+        bd: i.cantidad ? 'var(--linea)' : 'var(--falta)',
+        bdw: i.cantidad ? 'var(--bd)' : 'var(--bd-estado)'
+      })),
+      modalOpen: !!modalVals, modal: modalVals,
+      closeModal: () => this.setState({ modal: null }),
+      confirmItem: () => this.setState({ modal: null }),
+      shots: Array.from({ length: shots }, (_, i) => ({ tag: '0' + (i + 1) })),
+      shotsHint: shots + ' FOTOS',
+      shoot: () => this.setState({ shots: Math.min(shots + 1, 5) }),
+      finishProduct: () => this.setState({ a: 'grid', shots: 2 }),
+      queueRows: ordenados.filter(i => i.sistema).map(i => ({
+        name: 'Producto ' + i.pos,
+        meta: '4 FOTOS · 10:07',
+        chip: 'cola',
+        chipLabel: 'En cola'
+      })),
+      tituloCola: enCola === 1 ? '1 en cola' : enCola + ' en cola',
+      burstCount: burst,
+      burstShoot: () => this.setState({ burst: Math.min(burst + 1, 8) }),
+      nextProduct: () => this.setState({ burst: 1 }),
+      burstThumbs: Array.from({ length: Math.min(burst, 5) }, (_, i) => {
+        const leida = i < burst - 2;
+        return {
+          tag: leida ? '●' : '◌',
+          bd: leida ? 'var(--sello-bd)' : 'rgba(245,246,244,.3)',
+          fg: leida ? '#8FBFA6' : 'var(--texto-tenue-sobre-oscuro)'
+        };
+      }),
+      wizPos: wiz,
+      wizSteps: [1, 2, 3].map(n => ({ bg: n <= wiz ? 'var(--boli)' : 'var(--bond-2)' })),
+      wizTitle: 'Falta país de origen',
+      wizSub: 'No aparece en ninguna de las 3 fotos. Estas son las opciones que sí se alcanzan a leer en la etiqueta.',
+      wizOptions: [
+        { label: 'China', hint: 'MADE IN CH…', mark: '◉', markFg: 'var(--boli)', bg: 'var(--boli-bg)', bd: 'var(--boli)', bdw: 'var(--bd-estado)', on: () => {} },
+        { label: 'Vietnam', hint: 'VNM', mark: '○', markFg: 'var(--grafito)', bg: '#fff', bd: 'var(--linea)', bdw: 'var(--bd)', on: () => {} },
+        { label: 'Bangladesh', hint: 'BGD', mark: '○', markFg: 'var(--grafito)', bg: '#fff', bd: 'var(--linea)', bdw: 'var(--bd)', on: () => {} }
+      ],
+      wizOk: [
+        { label: 'Referencia', value: 'REF 90412-C', fg: 'var(--tinta)' },
+        { label: 'Modelo', value: 'DR-220', fg: 'var(--tinta)' },
+        { label: 'Serial', value: 'No aparece', fg: 'var(--grafito)' },
+        { label: 'Descripción', value: 'Pantalón dril azul talla M', fg: 'var(--tinta)' },
+        { label: 'Marca', value: 'Nomad', fg: 'var(--tinta)' }
+      ],
+      wizCta: wiz < 3 ? 'Confirmar y siguiente →' : 'Confirmar y volver al acta →',
+      wizNext: () => this.setState({ wiz: wiz < 3 ? wiz + 1 : 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);font-size:var(--t-base);line-height:var(--alto-base);color:var(--texto);background:var(--fondo-app);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:var(--boli);text-decoration-thickness:1px;text-underline-offset:2px}
+a:hover{color:var(--boli-fuerte)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:var(--foco-ring) solid var(--foco);outline-offset:var(--foco-offset)}
+code,kbd,samp{font-family:var(--mono)}
+@keyframes acta-brillo{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes acta-giro{to{transform:rotate(360deg)}}
+@keyframes acta-sellar{0%{transform:rotate(-4.5deg) scale(1.6);opacity:0}60%{opacity:.95}100%{transform:rotate(-4.5deg) scale(1);opacity:.9}}
+@media(prefers-reduced-motion:reduce){*,*::after,*::before{animation:none!important;transition:none!important}}

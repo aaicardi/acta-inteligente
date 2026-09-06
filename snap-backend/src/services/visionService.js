@@ -29,14 +29,16 @@ Vas a recibir una o varias fotos que muestran el MISMO producto (pueden ser dist
 - "material": material del producto (ej: "plástico", "acero inoxidable"). Si no se puede determinar, deja "" (vacío).
 - "medidas": medidas o dimensiones del producto, si aplica y son visibles (ej: "30x20x15 cm"). Si no aplica o no se puede leer, deja "" (vacío).
 - "marca": la marca/fabricante visible en las fotos. Si no se puede leer, deja "" (vacío).
+- "datosAdicionales": una lista de pares { "etiqueta", "valor" } con OTROS datos impresos en la etiqueta que sean relevantes para el inventario y que NO encajen en ningún campo anterior. Ejemplos de qué SÍ incluir (si aparecen): código o "Code" (distinto de la referencia), lote o "Lot No", capacidad o volumen (ej: "capacidad: 750ML" en un solo par, NUNCA separes el número y la unidad en dos pares), voltaje, fecha de vencimiento, número de parte. Ejemplos de qué NO incluir nunca: direcciones o razón social del fabricante/importador, textos legales o regulatorios, códigos de barras, número de orden de trabajo interno del importador. Cada dato real va en UN solo par (no lo fragmentes en varios). Máximo 5 pares. Si no hay ningún dato adicional relevante, usa una lista vacía [].
 - "confianza": un número entre 0 y 1 que indica qué tan seguro estás de TODA la extracción en conjunto. Usa valores bajos (menor a 0.5) si las fotos están borrosas, con reflejos, en un idioma que no puedes leer bien, o si falta información importante (distinta de la referencia/modelo/serial).
 - "motivoRevision": una de estas cadenas exactas si el inspector debería revisar el ítem: "foto borrosa", "texto ilegible", "informacion incompleta". Si todo se leyó bien, usa null.
 
 REGLAS ESTRICTAS:
-1. NUNCA inventes un dato que no puedas leer en las fotos. Ante la duda, deja el campo vacío y baja la confianza.
+1. NUNCA inventes un dato que no puedas leer en las fotos. Ante la duda, deja el campo vacío (o la lista vacía) y baja la confianza.
 2. La ausencia de referencia, modelo o serial NO es un error: usa "no dice" y no bajes la confianza solo por eso.
 3. Combina la información de todas las fotos entregadas; no analices cada foto por separado.
-4. Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ni markdown.`;
+4. En "datosAdicionales" sé selectivo: solo lo que un inspector de aduanas necesitaría para identificar o describir el producto en el acta, nunca información de contacto o legal del fabricante.
+5. Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional ni markdown.`;
 
 const JSON_SCHEMA = {
   name: 'extraccion_producto',
@@ -53,6 +55,18 @@ const JSON_SCHEMA = {
       material: { type: 'string' },
       medidas: { type: 'string' },
       marca: { type: 'string' },
+      datosAdicionales: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            etiqueta: { type: 'string' },
+            valor: { type: 'string' },
+          },
+          required: ['etiqueta', 'valor'],
+          additionalProperties: false,
+        },
+      },
       confianza: { type: 'number' },
       motivoRevision: { type: ['string', 'null'] },
     },
@@ -66,6 +80,7 @@ const JSON_SCHEMA = {
       'material',
       'medidas',
       'marca',
+      'datosAdicionales',
       'confianza',
       'motivoRevision',
     ],
@@ -78,10 +93,19 @@ const JSON_SCHEMA = {
 // concatenan aquí dentro del texto de descripción — ver objetivo del ajuste.
 function construirDescripcion(parsed) {
   const base = parsed.descripcionProducto || 'no dice';
-  return (
+  let descripcion =
     `${base}. Color: ${parsed.color || 'no dice'}. Material: ${parsed.material || 'no dice'}. ` +
-    `Medidas: ${parsed.medidas || 'no dice'}. Modelo: ${parsed.modelo || 'no dice'}. Serial: ${parsed.serial || 'no dice'}.`
-  );
+    `Medidas: ${parsed.medidas || 'no dice'}. Modelo: ${parsed.modelo || 'no dice'}. Serial: ${parsed.serial || 'no dice'}.`;
+
+  if (Array.isArray(parsed.datosAdicionales) && parsed.datosAdicionales.length > 0) {
+    const extra = parsed.datosAdicionales
+      .filter((d) => d && d.etiqueta && d.valor)
+      .map((d) => `${d.etiqueta}: ${d.valor}`)
+      .join(', ');
+    if (extra) descripcion += ` ${extra}.`;
+  }
+
+  return descripcion;
 }
 
 function aImageUrl(foto) {
@@ -147,6 +171,7 @@ async function analizarProducto(fotosBase64) {
     paisOrigen: parsed.paisOrigen,
     descripcion: construirDescripcion(parsed),
     marca: parsed.marca,
+    datosAdicionales: parsed.datosAdicionales,
     confianza: parsed.confianza,
     motivoRevision: parsed.motivoRevision,
     estado,

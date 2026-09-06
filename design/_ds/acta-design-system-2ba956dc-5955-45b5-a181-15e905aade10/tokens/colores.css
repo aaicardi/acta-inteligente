@@ -1,0 +1,44 @@
+:root{
+  /* --- base · el mundo del documento --- */
+  --tinta:#12181B;        /* texto principal, header oscuro, chip de número */
+  --tinta-70:#38454E;     /* texto secundario, borde sobre tinta */
+  --grafito:#6A767E;      /* metadatos, labels mono, placeholders */
+  --bond:#F5F6F4;         /* fondo de app (papel bond) */
+  --bond-2:#E9EBE7;       /* fondo de foto vacía, botón deshabilitado */
+  --linea:#D3D7D1;        /* borde por defecto, 1px */
+
+  /* --- marca · SOLO acciones, nunca estados --- */
+  --boli:#1F3BB3;
+  --boli-fuerte:#182F91;  /* press */
+  --boli-claro:#5B78E8;   /* focus ring, eyebrow sobre tinta */
+  --boli-bg:#E4E8FA;
+
+  /* --- estados · NUNCA para marca --- */
+  --sello:#166B43;        /* listo / generar acta */
+  --sello-bg:#E2F0E8;
+  --sello-bd:#8FBFA6;
+  --copia:#8A6100;        /* revisar — texto accesible */
+  --copia-bg:#F6EBD2;
+  --copia-bd:#C08A1A;     /* revisar — borde/relleno */
+  --falta:#B32946;        /* falta cantidad / rechazo */
+  --falta-bg:#F8DEE3;
+  --falta-bd:#DE9BAA;
+
+  /* --- alias semánticos --- */
+  --texto:var(--tinta);
+  --texto-2:var(--tinta-70);
+  --texto-3:var(--grafito);
+  --texto-sobre-oscuro:var(--bond);
+  --texto-tenue-sobre-oscuro:#B6BEC4;
+  --fondo-app:var(--bond);
+  --fondo-tarjeta:#FFFFFF;
+  --fondo-hundido:var(--bond-2);
+  --fondo-heredado:var(--bond);      /* campo pre-llenado */
+  --borde:var(--linea);
+  --borde-fuerte:var(--tinta);
+  --accion:var(--boli);
+  --accion-press:var(--boli-fuerte);
+  --accion-texto:#FFFFFF;
+  --foco:var(--boli-claro);
+  --vidrio-velo:rgba(245,246,244,.82); /* velo "en cola" sobre la foto */
+}

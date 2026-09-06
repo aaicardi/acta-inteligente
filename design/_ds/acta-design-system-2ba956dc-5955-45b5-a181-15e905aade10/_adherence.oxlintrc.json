@@ -1,0 +1,425 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/acciones/**",
+              "components/captura/**",
+              "components/estado/**",
+              "components/estructura/**",
+              "components/formulario/**",
+              "ui_kits/acta-pwa/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Archivo|IBM Plex Mono))/i]",
+        "message": "Font not provided by the design system. Available: Archivo, IBM Plex Mono."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='AppHeader'] > JSXAttribute > JSXIdentifier[name!=/^(?:titulo|meta|chip|style|key|ref|className|style|children)$/]",
+        "message": "<AppHeader> doesn't accept that prop. Declared props: titulo, meta, chip, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='BarraExcepcion'] > JSXAttribute > JSXIdentifier[name!=/^(?:cantidad|onRevisar|style|key|ref|className|style|children)$/]",
+        "message": "<BarraExcepcion> doesn't accept that prop. Declared props: cantidad, onRevisar, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Boton'] > JSXAttribute > JSXIdentifier[name!=/^(?:variante|talla|ancho|disabled|children|key|ref|className|style|children)$/]",
+        "message": "<Boton> doesn't accept that prop. Declared props: variante, talla, ancho, disabled, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Boton'] > JSXAttribute[name.name='variante'] > Literal[value!=/^(?:primaria|acta|secundaria|excepcion)$/]",
+        "message": "<Boton> variante must be one of 'primaria' | 'acta' | 'secundaria' | 'excepcion'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Boton'] > JSXAttribute[name.name='talla'] > Literal[value!=/^(?:md|tap|lg|barra)$/]",
+        "message": "<Boton> talla must be one of 'md' | 'tap' | 'lg' | 'barra'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Boton'] > JSXAttribute[name.name='ancho'] > Literal[value!=/^(?:full|auto)$/]",
+        "message": "<Boton> ancho must be one of 'full' | 'auto'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Campo'] > JSXAttribute > JSXIdentifier[name!=/^(?:etiqueta|valor|children|heredado|mono|hint|vacio|ancho|style|key|ref|className|style|children)$/]",
+        "message": "<Campo> doesn't accept that prop. Declared props: etiqueta, valor, children, heredado, mono, hint, vacio, ancho, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Campo'] > JSXAttribute[name.name='ancho'] > Literal[value!=/^(?:wide)$/]",
+        "message": "<Campo> ancho must be one of 'wide'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CampoCantidad'] > JSXAttribute > JSXIdentifier[name!=/^(?:valor|unidad|estado|disabled|onChange|style|key|ref|className|style|children)$/]",
+        "message": "<CampoCantidad> doesn't accept that prop. Declared props: valor, unidad, estado, disabled, onChange, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CampoCantidad'] > JSXAttribute[name.name='estado'] > Literal[value!=/^(?:neutro|falta|ok)$/]",
+        "message": "<CampoCantidad> estado must be one of 'neutro' | 'falta' | 'ok'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ColaChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:estado|children|style|key|ref|className|style|children)$/]",
+        "message": "<ColaChip> doesn't accept that prop. Declared props: estado, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ColaChip'] > JSXAttribute[name.name='estado'] > Literal[value!=/^(?:analizando|cola|sincronizado)$/]",
+        "message": "<ColaChip> estado must be one of 'analizando' | 'cola' | 'sincronizado'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EncabezadoForm'] > JSXAttribute > JSXIdentifier[name!=/^(?:datos|style|key|ref|className|style|children)$/]",
+        "message": "<EncabezadoForm> doesn't accept that prop. Declared props: datos, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EstadoBadge'] > JSXAttribute > JSXIdentifier[name!=/^(?:estado|children|punto|style|key|ref|className|style|children)$/]",
+        "message": "<EstadoBadge> doesn't accept that prop. Declared props: estado, children, punto, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EstadoBadge'] > JSXAttribute[name.name='estado'] > Literal[value!=/^(?:listo|revisar|falta|neutro)$/]",
+        "message": "<EstadoBadge> estado must be one of 'listo' | 'revisar' | 'falta' | 'neutro'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ItemCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:numero|foto|descripcion|referencia|estado|razon|cantidad|unidad|sistema|falta|error|onCantidadChange|style|key|ref|className|style|children)$/]",
+        "message": "<ItemCard> doesn't accept that prop. Declared props: numero, foto, descripcion, referencia, estado, razon, cantidad, unidad, sistema, falta, error, onCantidadChange, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ItemCard'] > JSXAttribute[name.name='estado'] > Literal[value!=/^(?:listo|revisar)$/]",
+        "message": "<ItemCard> estado must be one of 'listo' | 'revisar'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ItemCard'] > JSXAttribute[name.name='sistema'] > Literal[value!=/^(?:analizando|cola)$/]",
+        "message": "<ItemCard> sistema must be one of 'analizando' | 'cola'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ResumenActa'] > JSXAttribute > JSXIdentifier[name!=/^(?:doNo|items|bultos|peso|sello|style|key|ref|className|style|children)$/]",
+        "message": "<ResumenActa> doesn't accept that prop. Declared props: doNo, items, bultos, peso, sello, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Sello'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|animar|style|key|ref|className|style|children)$/]",
+        "message": "<Sello> doesn't accept that prop. Declared props: children, animar, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Skeleton'] > JSXAttribute > JSXIdentifier[name!=/^(?:alto|ancho|radio|style|children|key|ref|className|style|children)$/]",
+        "message": "<Skeleton> doesn't accept that prop. Declared props: alto, ancho, radio, style, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Tarjeta'] > JSXAttribute > JSXIdentifier[name!=/^(?:etiqueta|franja|children|style|key|ref|className|style|children)$/]",
+        "message": "<Tarjeta> doesn't accept that prop. Declared props: etiqueta, franja, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Tarjeta'] > JSXAttribute[name.name='franja'] > Literal[value!=/^(?:boli|falta|copia|sello)$/]",
+        "message": "<Tarjeta> franja must be one of 'boli' | 'falta' | 'copia' | 'sello'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Velo'] > JSXAttribute > JSXIdentifier[name!=/^(?:estado|etiqueta|style|key|ref|className|style|children)$/]",
+        "message": "<Velo> doesn't accept that prop. Declared props: estado, etiqueta, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Velo'] > JSXAttribute[name.name='estado'] > Literal[value!=/^(?:cola|analizando)$/]",
+        "message": "<Velo> estado must be one of 'cola' | 'analizando'."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "AppHeader": {
+        "replaces": []
+      },
+      "BarraExcepcion": {
+        "replaces": []
+      },
+      "Boton": {
+        "replaces": []
+      },
+      "Campo": {
+        "replaces": []
+      },
+      "CampoCantidad": {
+        "replaces": []
+      },
+      "ColaChip": {
+        "replaces": []
+      },
+      "EncabezadoForm": {
+        "replaces": []
+      },
+      "EstadoBadge": {
+        "replaces": []
+      },
+      "ItemCard": {
+        "replaces": []
+      },
+      "ResumenActa": {
+        "replaces": []
+      },
+      "Sello": {
+        "replaces": []
+      },
+      "Skeleton": {
+        "replaces": []
+      },
+      "Tarjeta": {
+        "replaces": []
+      },
+      "Velo": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--accion",
+      "--accion-press",
+      "--accion-texto",
+      "--alto-apretado",
+      "--alto-base",
+      "--alto-codigo",
+      "--alto-nota",
+      "--alto-titulo",
+      "--ancho-doc",
+      "--ancho-mob-max",
+      "--ancho-mobile",
+      "--bd",
+      "--bd-acento",
+      "--bd-estado",
+      "--bd-marca",
+      "--bd-sec",
+      "--bd-sello",
+      "--boli",
+      "--boli-bg",
+      "--boli-claro",
+      "--boli-fuerte",
+      "--bond",
+      "--bond-2",
+      "--borde",
+      "--borde-fuerte",
+      "--copia",
+      "--copia-bd",
+      "--copia-bg",
+      "--dur-brillo",
+      "--dur-giro",
+      "--dur-sello",
+      "--ease-lineal",
+      "--ease-sello",
+      "--falta",
+      "--falta-bd",
+      "--falta-bg",
+      "--foco",
+      "--foco-offset",
+      "--foco-ring",
+      "--fondo-app",
+      "--fondo-heredado",
+      "--fondo-hundido",
+      "--fondo-tarjeta",
+      "--grafito",
+      "--linea",
+      "--medida-nota",
+      "--medida-parrafo",
+      "--mono",
+      "--numeros",
+      "--peso-black",
+      "--peso-bold",
+      "--peso-medio",
+      "--peso-normal",
+      "--peso-semi",
+      "--r",
+      "--r-chip",
+      "--r-min",
+      "--r-mob",
+      "--r-redondo",
+      "--s1",
+      "--s2",
+      "--s3",
+      "--s4",
+      "--s5",
+      "--s6",
+      "--s7",
+      "--s8",
+      "--sans",
+      "--sello",
+      "--sello-bd",
+      "--sello-bg",
+      "--sombra",
+      "--t-10",
+      "--t-11",
+      "--t-12",
+      "--t-13",
+      "--t-14",
+      "--t-15",
+      "--t-9",
+      "--t-base",
+      "--t-cuerpo-2",
+      "--t-display",
+      "--t-h2",
+      "--t-h3",
+      "--t-h4",
+      "--t-titulo-app",
+      "--tap",
+      "--tap-40",
+      "--tap-lg",
+      "--tap-min",
+      "--texto",
+      "--texto-2",
+      "--texto-3",
+      "--texto-cuerpo",
+      "--texto-dato",
+      "--texto-sobre-oscuro",
+      "--texto-tenue-sobre-oscuro",
+      "--tinta",
+      "--tinta-70",
+      "--track-badge",
+      "--track-dato",
+      "--track-display",
+      "--track-eyebrow",
+      "--track-h2",
+      "--track-h4",
+      "--track-label",
+      "--vidrio-velo"
+    ],
+    "tokenKinds": {
+      "--tinta": "color",
+      "--tinta-70": "color",
+      "--grafito": "color",
+      "--bond": "color",
+      "--bond-2": "color",
+      "--linea": "color",
+      "--boli": "color",
+      "--boli-fuerte": "color",
+      "--boli-claro": "color",
+      "--boli-bg": "color",
+      "--sello": "color",
+      "--sello-bg": "color",
+      "--sello-bd": "color",
+      "--copia": "color",
+      "--copia-bg": "color",
+      "--copia-bd": "color",
+      "--falta": "color",
+      "--falta-bg": "color",
+      "--falta-bd": "color",
+      "--texto": "color",
+      "--texto-2": "color",
+      "--texto-3": "color",
+      "--texto-sobre-oscuro": "color",
+      "--texto-tenue-sobre-oscuro": "color",
+      "--fondo-app": "color",
+      "--fondo-tarjeta": "color",
+      "--fondo-hundido": "color",
+      "--fondo-heredado": "color",
+      "--borde": "color",
+      "--borde-fuerte": "color",
+      "--accion": "color",
+      "--accion-press": "color",
+      "--accion-texto": "color",
+      "--foco": "color",
+      "--vidrio-velo": "color",
+      "--sans": "font",
+      "--mono": "font",
+      "--t-display": "spacing",
+      "--t-h2": "spacing",
+      "--t-h3": "spacing",
+      "--t-h4": "spacing",
+      "--t-titulo-app": "spacing",
+      "--t-base": "spacing",
+      "--t-cuerpo-2": "spacing",
+      "--t-15": "spacing",
+      "--t-14": "spacing",
+      "--t-13": "spacing",
+      "--t-12": "spacing",
+      "--t-11": "spacing",
+      "--t-10": "spacing",
+      "--t-9": "spacing",
+      "--peso-normal": "font",
+      "--peso-medio": "font",
+      "--peso-semi": "font",
+      "--peso-bold": "font",
+      "--peso-black": "font",
+      "--alto-apretado": "font",
+      "--alto-titulo": "font",
+      "--alto-base": "font",
+      "--alto-nota": "font",
+      "--alto-codigo": "font",
+      "--track-display": "font",
+      "--track-h2": "font",
+      "--track-h4": "font",
+      "--track-eyebrow": "font",
+      "--track-label": "font",
+      "--track-badge": "font",
+      "--track-dato": "font",
+      "--texto-cuerpo": "color",
+      "--texto-dato": "color",
+      "--numeros": "font",
+      "--s1": "spacing",
+      "--s2": "spacing",
+      "--s3": "spacing",
+      "--s4": "spacing",
+      "--s5": "spacing",
+      "--s6": "spacing",
+      "--s7": "spacing",
+      "--s8": "spacing",
+      "--tap": "spacing",
+      "--tap-lg": "spacing",
+      "--tap-min": "spacing",
+      "--tap-40": "spacing",
+      "--ancho-doc": "spacing",
+      "--ancho-mobile": "spacing",
+      "--ancho-mob-max": "spacing",
+      "--medida-nota": "other",
+      "--medida-parrafo": "other",
+      "--r": "spacing",
+      "--r-chip": "spacing",
+      "--r-min": "spacing",
+      "--r-mob": "spacing",
+      "--r-redondo": "spacing",
+      "--bd": "other",
+      "--bd-estado": "other",
+      "--bd-acento": "other",
+      "--bd-sec": "other",
+      "--bd-sello": "other",
+      "--bd-marca": "other",
+      "--sombra": "shadow",
+      "--foco-ring": "other",
+      "--foco-offset": "other",
+      "--dur-sello": "other",
+      "--dur-brillo": "other",
+      "--dur-giro": "other",
+      "--ease-sello": "other",
+      "--ease-lineal": "other"
+    },
+    "fontFamilies": [
+      "Archivo",
+      "IBM Plex Mono"
+    ]
+  }
+}

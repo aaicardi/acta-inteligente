@@ -1,0 +1,7 @@
+:root{
+  --dur-sello:.3s; /* @kind other */
+  --dur-brillo:1.4s; /* @kind other */   /* skeleton */
+  --dur-giro:.8s; /* @kind other */      /* spinner */
+  --ease-sello:cubic-bezier(.2,1.4,.4,1); /* @kind other */ /* el único rebote del producto */
+  --ease-lineal:linear; /* @kind other */
+}

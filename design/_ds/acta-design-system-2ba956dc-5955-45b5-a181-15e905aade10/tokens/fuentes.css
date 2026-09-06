@@ -1,0 +1,4 @@
+/* Acta Inteligente — webfonts.
+   No se recibieron binarios de fuente con el spec: Archivo e IBM Plex Mono
+   se cargan desde Google Fonts (ambas son las familias exactas del spec v0.2). */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");

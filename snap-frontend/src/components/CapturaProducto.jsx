@@ -32,31 +32,10 @@ export default function CapturaProducto({ numerosUsados = [], onAgregar, onCance
     setErrorNumero(limpio && estaUsado(limpio) ? `El ítem ${limpio} ya existe.` : '');
   }
 
-  // Como <input capture> no tiene preview en vivo, no hay forma de mostrar
-  // en pantalla que la foto "quedó guardada": disparamos una descarga del
-  // archivo para que Android la indexe en la galería (álbum Downloads),
-  // igual que cualquier imagen descargada desde el navegador.
-  function guardarEnGaleria(file, idx) {
-    try {
-      const url = URL.createObjectURL(file);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ActaInteligente_${Date.now()}_${idx}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    } catch {
-      // Si el navegador bloquea la descarga automática, la foto sigue
-      // disponible dentro del acta; solo no queda copia en la galería.
-    }
-  }
-
-  function agregarArchivos(fileList, { deCamara = false } = {}) {
+  function agregarArchivos(fileList) {
     const nuevos = Array.from(fileList || []);
     if (nuevos.length === 0) return;
     setError('');
-    if (deCamara) nuevos.forEach((file, idx) => guardarEnGaleria(file, idx));
     setFotos((prev) => [...prev, ...nuevos]);
   }
 
@@ -101,7 +80,7 @@ export default function CapturaProducto({ numerosUsados = [], onAgregar, onCance
         capture="environment"
         style={{ display: 'none' }}
         onChange={(e) => {
-          agregarArchivos(e.target.files, { deCamara: true });
+          agregarArchivos(e.target.files);
           e.target.value = '';
         }}
       />

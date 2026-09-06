@@ -1,44 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import EncabezadoForm from './components/EncabezadoForm';
 import ListaItems from './components/ListaItems';
 import CapturaProducto from './components/CapturaProducto';
 import ItemDetalleModal from './components/ItemDetalleModal';
 import Modal from './components/Modal';
-import { AppHeader, ColaChip, BarraExcepcion, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad } from './components/ds';
-import * as db from './lib/db';
+import Historico from './components/Historico';
+import HistoricoDetalle from './components/HistoricoDetalle';
+import { AppHeader, ColaChip, BarraExcepcion, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar } from './components/ds';
 import * as api from './lib/api';
 
-function encabezadoVacio() {
-  return {
-    doNo: '',
-    cliente: '',
-    documentoTransporte: '',
-    deposito: '',
-    ciudad: '',
-    fecha: new Date().toISOString().slice(0, 10),
-    horaInicio: '',
-    horaFin: '',
-    bultos: '',
-    peso: '',
-    observaciones: '',
-  };
-}
-
 // Los fallos de red (sin señal) van a "en_cola" para reintentar solos al
-// reconectar (ver Fase 4). Cualquier otro fallo (backend caído, IA sin
-// configurar, límite de la API) va a "revisar" con el motivo visible.
+// reconectar. Cualquier otro fallo (backend caído, IA sin configurar, límite
+// de la API) va a "revisar" con el motivo visible.
 function esFalloDeRed(err) {
   return err instanceof TypeError;
-}
-
-// crypto.randomUUID() solo existe en contextos seguros (https o localhost).
-// Probado en el celular vía IP de LAN por http:// falla en silencio y nunca
-// llega a agregar el producto: con este respaldo funciona en cualquier caso.
-function generarId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function sinCantidad(item) {
@@ -53,9 +28,13 @@ function ordenarPorNumero(lista) {
   return [...lista].sort((a, b) => Number(a.orden) - Number(b.orden));
 }
 
+const DEBOUNCE_MS = 400;
+
 export default function App() {
+  const [seccion, setSeccion] = useState('inspeccion');
   const [pantalla, setPantalla] = useState('cargando');
-  const [encabezado, setEncabezado] = useState(encabezadoVacio());
+  const [actaId, setActaId] = useState(null);
+  const [encabezado, setEncabezado] = useState(null);
   const [items, setItems] = useState([]);
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
   const [mostrarEncabezado, setMostrarEncabezado] = useState(false);
@@ -64,61 +43,92 @@ export default function App() {
   const [itemAbiertoId, setItemAbiertoId] = useState(null);
   const [resumenGenerado, setResumenGenerado] = useState(null);
 
+  const [actas, setActas] = useState([]);
+  const [cargandoHistorico, setCargandoHistorico] = useState(false);
+  const [errorHistorico, setErrorHistorico] = useState('');
+  const [busquedaHistorico, setBusquedaHistorico] = useState('');
+  const [vistaHistorico, setVistaHistorico] = useState('lista');
+  const [actaDetalle, setActaDetalle] = useState(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState('');
+  const [descargandoDetalle, setDescargandoDetalle] = useState(false);
+
+  const debounceRef = useRef({});
+
+  // El contador "N guardadas" del TabBar necesita el conteo de actas desde el
+  // arranque, no solo cuando el inspector entra a la pestaña Histórico —
+  // si no, refrescar la página muestra "0" hasta la primera visita a Actas.
+  useEffect(() => {
+    api.listarActas().then(setActas).catch(() => {});
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const enc = await db.leerEncabezado();
-      const itemsGuardados = await db.leerItems();
-      if (enc || itemsGuardados.length > 0) {
-        setEncabezado(enc || encabezadoVacio());
-        setItems(itemsGuardados);
-        setPantalla('trabajo');
-      } else {
+      try {
+        const enCurso = await api.obtenerActaEnCurso();
+        if (enCurso) {
+          setActaId(enCurso.id);
+          setEncabezado(enCurso);
+          setItems(enCurso.items || []);
+          setPantalla('trabajo');
+        } else {
+          setPantalla('inicio');
+        }
+      } catch {
         setPantalla('inicio');
       }
     })();
   }, []);
 
   const iniciarNuevaActa = useCallback(async () => {
-    const ultimos = await db.leerUltimosValores();
-    const enc = { ...encabezadoVacio(), ciudad: ultimos?.ciudad || '', deposito: ultimos?.deposito || '' };
-    setEncabezado(enc);
-    setItems([]);
     setError('');
-    setResumenGenerado(null);
-    await db.guardarEncabezado(enc);
-    setPantalla('trabajo');
-    setMostrarEncabezado(true);
-  }, []);
-
-  const actualizarEncabezado = useCallback((campo, valor) => {
-    setEncabezado((prev) => {
-      const next = { ...prev, [campo]: valor };
-      db.guardarEncabezado(next);
-      return next;
-    });
-  }, []);
-
-  const analizarYActualizar = useCallback(async (id, fotosParaAnalizar) => {
     try {
-      const resultado = await api.analizarProducto(fotosParaAnalizar);
-      setItems((prev) => {
-        const next = prev.map((it) => (it.id === id ? { ...it, ...resultado } : it));
-        const actualizado = next.find((it) => it.id === id);
-        if (actualizado) db.guardarItem(actualizado);
-        return next;
-      });
+      const acta = await api.crearActa();
+      setActaId(acta.id);
+      setEncabezado(acta);
+      setItems([]);
+      setResumenGenerado(null);
+      setPantalla('trabajo');
+      setMostrarEncabezado(true);
     } catch (err) {
-      setItems((prev) => {
-        const cambios = esFalloDeRed(err)
-          ? { estado: 'en_cola', motivoRevision: 'Sin conexión; se reintentará automáticamente.' }
-          : { estado: 'revisar', motivoRevision: err.message };
-        const next = prev.map((it) => (it.id === id ? { ...it, ...cambios } : it));
-        const actualizado = next.find((it) => it.id === id);
-        if (actualizado) db.guardarItem(actualizado);
-        return next;
-      });
+      setError(err.message);
     }
   }, []);
+
+  const actualizarEncabezado = useCallback(
+    (campo, valor) => {
+      setEncabezado((prev) => ({ ...prev, [campo]: valor }));
+      clearTimeout(debounceRef.current[campo]);
+      debounceRef.current[campo] = setTimeout(async () => {
+        try {
+          await api.actualizarEncabezado(actaId, { [campo]: valor });
+        } catch (err) {
+          setError(err.message);
+        }
+      }, DEBOUNCE_MS);
+    },
+    [actaId]
+  );
+
+  const analizarYActualizar = useCallback(
+    async (id, fotosParaAnalizar) => {
+      try {
+        const item = await api.analizarItem(actaId, id, fotosParaAnalizar);
+        setItems((prev) => prev.map((it) => (it.id === id ? item : it)));
+      } catch (err) {
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === id
+              ? esFalloDeRed(err)
+                ? { ...it, estado: 'en_cola', motivoRevision: 'Sin conexión; se reintentará automáticamente.' }
+                : { ...it, estado: 'revisar', motivoRevision: err.message }
+              : it
+          )
+        );
+      }
+    },
+    [actaId]
+  );
 
   const agregarItem = useCallback(
     async ({ fotos, cantidad, numero }) => {
@@ -129,29 +139,21 @@ export default function App() {
       if (items.some((it) => Number(it.orden) === numeroLimpio)) {
         throw new Error(`El ítem ${numeroLimpio} ya existe. Usa otro número.`);
       }
-      const id = generarId();
-      const nuevo = {
-        id,
-        orden: numeroLimpio,
-        referenciaCarpeta: null,
-        fotos,
-        cantidad,
-        referencia: '',
-        modelo: '',
-        serial: '',
-        paisOrigen: '',
-        descripcion: '',
-        marca: '',
-        estado: 'analizando',
-        confianza: 0,
-        motivoRevision: null,
-      };
+
+      const creado = await api.agregarItem(actaId, { orden: numeroLimpio });
+      const nuevo = { ...creado, fotos, cantidad, estado: 'analizando' };
       setItems((prev) => [...prev, nuevo]);
-      await db.guardarItem(nuevo);
       setMostrarCaptura(false);
-      await analizarYActualizar(id, fotos);
+      await analizarYActualizar(creado.id, fotos);
+      if (cantidad !== '' && cantidad !== undefined) {
+        try {
+          await api.actualizarItem(actaId, creado.id, { cantidad });
+        } catch (err) {
+          setError(err.message);
+        }
+      }
     },
-    [items, analizarYActualizar]
+    [items, actaId, analizarYActualizar]
   );
 
   const reintentarItem = useCallback(
@@ -164,7 +166,7 @@ export default function App() {
     [items, analizarYActualizar]
   );
 
-  // Fase 4: al recuperar señal, reintenta solos todos los ítems "en_cola".
+  // Al recuperar señal, reintenta solos todos los ítems "en_cola".
   useEffect(() => {
     function alReconectar() {
       setItems((prev) => {
@@ -176,20 +178,27 @@ export default function App() {
     return () => window.removeEventListener('online', alReconectar);
   }, [reintentarItem]);
 
-  const actualizarItem = useCallback((id, cambios) => {
-    setItems((prev) => {
-      const next = prev.map((it) => (it.id === id ? { ...it, ...cambios } : it));
-      const actualizado = next.find((it) => it.id === id);
-      if (actualizado) db.guardarItem(actualizado);
-      return next;
-    });
-  }, []);
+  const actualizarItem = useCallback(
+    (id, cambios) => {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...cambios } : it)));
+      const key = `item-${id}`;
+      clearTimeout(debounceRef.current[key]);
+      debounceRef.current[key] = setTimeout(async () => {
+        try {
+          await api.actualizarItem(actaId, id, cambios);
+        } catch (err) {
+          setError(err.message);
+        }
+      }, DEBOUNCE_MS);
+    },
+    [actaId]
+  );
 
   // No se puede repetir número de ítem: valida contra el resto de la lista
-  // antes de guardar y devuelve el mensaje de error para mostrarlo en el
-  // formulario (o '' si quedó bien).
+  // antes de pedirlo al backend, y devuelve el mensaje de error para
+  // mostrarlo en el formulario (o '' si quedó bien).
   const actualizarNumero = useCallback(
-    (id, numero) => {
+    async (id, numero) => {
       const numeroLimpio = Number(numero);
       if (numero === '' || numero === null || numero === undefined || Number.isNaN(numeroLimpio)) {
         return 'Ingresa un número de ítem.';
@@ -198,16 +207,28 @@ export default function App() {
       if (duplicado) {
         return `El ítem ${numeroLimpio} ya existe.`;
       }
-      actualizarItem(id, { orden: numeroLimpio });
-      return '';
+      try {
+        await api.actualizarNumeroItem(actaId, id, numeroLimpio);
+        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, orden: numeroLimpio } : it)));
+        return '';
+      } catch (err) {
+        return err.message;
+      }
     },
-    [items, actualizarItem]
+    [items, actaId]
   );
 
-  const eliminarItem = useCallback((id) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
-    db.eliminarItem(id);
-  }, []);
+  const eliminarItem = useCallback(
+    async (id) => {
+      try {
+        await api.eliminarItem(actaId, id);
+        setItems((prev) => prev.filter((it) => it.id !== id));
+      } catch (err) {
+        setError(err.message);
+      }
+    },
+    [actaId]
+  );
 
   const abrirItem = useCallback((id) => setItemAbiertoId(id), []);
   const cerrarItem = useCallback(() => setItemAbiertoId(null), []);
@@ -220,12 +241,12 @@ export default function App() {
 
   // La cantidad es opcional siempre: nunca bloquea "Generar acta". La
   // pantalla de cierre solo la resalta para que el inspector la revise antes
-  // de firmar (ver spec.md, corregido tras feedback real de uso).
+  // de firmar.
   const generarActa = useCallback(async () => {
     setError('');
     setGenerando(true);
     try {
-      const blob = await api.generarActa(encabezado, ordenarPorNumero(items));
+      const blob = await api.generarActa(actaId);
       const nombreArchivo = `acta_${encabezado.doNo || 'sin_do'}.xlsx`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -244,19 +265,91 @@ export default function App() {
         peso: encabezado.peso,
       });
 
-      await db.guardarUltimosValores({ ciudad: encabezado.ciudad, deposito: encabezado.deposito });
-      await db.vaciarActa();
       setItems([]);
-      setEncabezado(encabezadoVacio());
+      setEncabezado(null);
+      setActaId(null);
       setPantalla('exito');
     } catch (err) {
       setError(err.message);
     } finally {
       setGenerando(false);
     }
-  }, [encabezado, items]);
+  }, [actaId, encabezado, items]);
 
-  if (pantalla === 'cargando') {
+  const cargarHistorico = useCallback(async (q) => {
+    setCargandoHistorico(true);
+    setErrorHistorico('');
+    try {
+      const lista = await api.listarActas(q ? { q } : {});
+      setActas(lista);
+    } catch (err) {
+      setErrorHistorico(err.message);
+    } finally {
+      setCargandoHistorico(false);
+    }
+  }, []);
+
+  const irAHistorico = useCallback(() => {
+    setSeccion('historico');
+    setVistaHistorico('lista');
+    cargarHistorico(busquedaHistorico);
+  }, [cargarHistorico, busquedaHistorico]);
+
+  useEffect(() => {
+    if (seccion !== 'historico' || vistaHistorico !== 'lista') return;
+    const timeout = setTimeout(() => cargarHistorico(busquedaHistorico), DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [busquedaHistorico, seccion, vistaHistorico, cargarHistorico]);
+
+  // Un acta "en_curso" todavía se está diligenciando: abrirla debe llevar al
+  // inspector de vuelta al flujo normal de captura/edición, no a la vista de
+  // solo lectura (esa es exclusiva de actas ya "generada").
+  const abrirActaHistorico = useCallback(async (id) => {
+    setVistaHistorico('detalle');
+    setCargandoDetalle(true);
+    setErrorDetalle('');
+    setActaDetalle(null);
+    try {
+      const acta = await api.obtenerActaDetalle(id);
+      if (acta.estado === 'en_curso') {
+        setActaId(acta.id);
+        setEncabezado(acta);
+        setItems(acta.items || []);
+        setSeccion('inspeccion');
+        setPantalla('trabajo');
+        return;
+      }
+      setActaDetalle(acta);
+    } catch (err) {
+      setErrorDetalle(err.message);
+    } finally {
+      setCargandoDetalle(false);
+    }
+  }, []);
+
+  const descargarDesdeHistorico = useCallback(async () => {
+    if (!actaDetalle) return;
+    setDescargandoDetalle(true);
+    setErrorDetalle('');
+    try {
+      const blob = await api.generarActa(actaDetalle.id);
+      const nombreArchivo = `acta_${actaDetalle.doNo || 'sin_do'}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorDetalle(err.message);
+    } finally {
+      setDescargandoDetalle(false);
+    }
+  }, [actaDetalle]);
+
+  if (pantalla === 'cargando' && seccion === 'inspeccion') {
     return (
       <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--mono)', fontSize: 'var(--t-13)', color: 'var(--grafito)' }}>
         Cargando…
@@ -264,34 +357,61 @@ export default function App() {
     );
   }
 
+  if (seccion === 'historico') {
+    const tabBar = <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />;
+    return vistaHistorico === 'lista' ? (
+      <Historico
+        actas={actas}
+        cargando={cargandoHistorico}
+        error={errorHistorico}
+        busqueda={busquedaHistorico}
+        onBusqueda={setBusquedaHistorico}
+        onAbrir={abrirActaHistorico}
+        tabBar={tabBar}
+      />
+    ) : (
+      <HistoricoDetalle
+        acta={actaDetalle}
+        cargando={cargandoDetalle}
+        error={errorDetalle}
+        descargando={descargandoDetalle}
+        onVolver={() => setVistaHistorico('lista')}
+        onDescargar={descargarDesdeHistorico}
+        tabBar={tabBar}
+      />
+    );
+  }
+
   if (pantalla === 'inicio') {
     return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--s5)',
-          padding: 'var(--s5)',
-          background: 'var(--bond)',
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', letterSpacing: 'var(--track-eyebrow)', textTransform: 'uppercase', color: 'var(--grafito)' }}>
-          GO.PD.02-F.02
+      <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'var(--s5)',
+            padding: 'var(--s5)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', letterSpacing: 'var(--track-eyebrow)', textTransform: 'uppercase', color: 'var(--grafito)' }}>
+            GO.PD.02-F.02
+          </div>
+          <h1 style={{ fontSize: 'var(--t-h2)', fontWeight: 'var(--peso-bold)', letterSpacing: 'var(--track-h2)', color: 'var(--tinta)' }}>Acta Inteligente</h1>
+          <p style={{ fontSize: 'var(--t-base)', lineHeight: 'var(--alto-nota)', color: 'var(--tinta-70)', maxWidth: '320px' }}>
+            Diligenciamiento de actas de inspección previa con IA.
+          </p>
+          {error && <p style={{ fontSize: 'var(--t-14)', color: 'var(--falta)' }}>{error}</p>}
+          <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+            <Boton variante="primaria" talla="lg" onClick={iniciarNuevaActa}>
+              Nueva acta →
+            </Boton>
+          </div>
         </div>
-        <h1 style={{ fontSize: 'var(--t-h2)', fontWeight: 'var(--peso-bold)', letterSpacing: 'var(--track-h2)', color: 'var(--tinta)' }}>Acta Inteligente</h1>
-        <p style={{ fontSize: 'var(--t-base)', lineHeight: 'var(--alto-nota)', color: 'var(--tinta-70)', maxWidth: '320px' }}>
-          Diligenciamiento de actas de inspección previa con IA.
-        </p>
-        <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
-          <Boton variante="primaria" talla="lg" onClick={iniciarNuevaActa}>
-            Nueva acta →
-          </Boton>
-        </div>
+        <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />
       </div>
     );
   }
@@ -504,6 +624,8 @@ export default function App() {
           Generar acta
         </Boton>
       </div>
+
+      <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />
     </div>
   );
 }

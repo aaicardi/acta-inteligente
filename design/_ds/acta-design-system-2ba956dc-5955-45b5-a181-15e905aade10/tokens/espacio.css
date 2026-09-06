@@ -1,0 +1,15 @@
+:root{
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+
+  /* tacto — guante puesto, una sola mano libre */
+  --tap:56px;      /* alto mínimo de acción principal */
+  --tap-lg:64px;   /* generar acta, cierre */
+  --tap-min:44px;  /* campo de cantidad dentro de la tarjeta */
+  --tap-40:40px;   /* botón dentro de la barra de excepción */
+
+  --ancho-doc:1080px;   /* documento de especificación */
+  --ancho-mobile:375px; /* pantalla objetivo de la PWA */
+  --ancho-mob-max:360px;/* simulación de grid 2 col en el doc */
+  --medida-nota:66ch; /* @kind other */
+  --medida-parrafo:58ch; /* @kind other */
+}

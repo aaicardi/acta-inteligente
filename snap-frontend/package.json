@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "idb": "^8.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite-plugin-pwa": "^1.3.0"

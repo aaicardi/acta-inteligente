@@ -1,0 +1,22 @@
+:root{
+  --font-display:'Sora',sans-serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,monospace;
+
+  --text-hero:44px;
+  --text-h1:38px;
+  --text-h2:28px;
+  --text-h3:22px;
+  --text-body-lg:18px;
+  --text-body:16px;
+  --text-small:13px;
+  --text-micro:12px;
+
+  --weight-regular:400;
+  --weight-medium:500;
+  --weight-semibold:600;
+  --weight-bold:700;
+
+  --leading-tight:1.2;
+  --leading-normal:1.45;
+}

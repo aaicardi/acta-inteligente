@@ -9,14 +9,16 @@ export default function ItemCard({ item, onActualizar, onAbrir }) {
   const [thumbUrl, setThumbUrl] = useState(null);
 
   useEffect(() => {
-    const primera = (item.fotos || []).find((f) => f instanceof Blob);
-    if (!primera) {
-      setThumbUrl(null);
-      return;
+    const fotos = item.fotos || [];
+    // Antes de analizar, las fotos son Blobs en memoria (recién capturadas);
+    // después de analizar, el backend devuelve URLs de Cloudinary ya subidas.
+    const primeraBlob = fotos.find((f) => f instanceof Blob);
+    if (primeraBlob) {
+      const url = URL.createObjectURL(primeraBlob);
+      setThumbUrl(url);
+      return () => URL.revokeObjectURL(url);
     }
-    const url = URL.createObjectURL(primera);
-    setThumbUrl(url);
-    return () => URL.revokeObjectURL(url);
+    setThumbUrl(fotos[0]?.url || null);
   }, [item.fotos]);
 
   const sistema = SISTEMA[item.estado] || null;

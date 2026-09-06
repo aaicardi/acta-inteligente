@@ -1,0 +1,20 @@
+:root{
+  --r:4px;        /* radio por defecto — tarjetas, botones, campos */
+  --r-chip:3px;   /* chips, badges, inputs internos, sello */
+  --r-min:2px;    /* swatch, número de orden, skeleton */
+  --r-mob:18px;   /* marco del dispositivo en maquetas */
+  --r-redondo:50%;/* punto de badge, spinner */
+
+  --bd:1px; /* @kind other */       /* borde por defecto */
+  --bd-estado:1.5px; /* @kind other */  /* borde de tarjeta en estado, campo de dato */
+  --bd-acento:2px; /* @kind other */    /* subrayado de sección, borde de spinner */
+  --bd-sec:2px; /* @kind other */
+  --bd-sello:2.5px; /* @kind other */
+  --bd-marca:4px; /* @kind other */     /* franja izquierda de tarjeta destacada */
+
+  /* Sin sistema de sombras: la jerarquía es papel sobre papel — blanco
+     sobre bond y un borde de 1px. No usar box-shadow en producto. */
+  --sombra:none; /* @kind shadow */
+  --foco-ring:3px; /* @kind other */
+  --foco-offset:2px; /* @kind other */
+}
