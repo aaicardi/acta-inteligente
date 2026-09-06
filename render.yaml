@@ -27,10 +27,12 @@ services:
       - key: DB_PASSWORD
         sync: false
       # Aiven exige TLS y firma con su propia CA. Render no permite subir
-      # archivos, asi que el ca.pem va pegado entero en DB_SSL_CA.
+      # archivos, asi que el certificado viaja en una variable: se pega en
+      # base64 y en una sola linea (base64 -w0 certs/aiven-ca.pem), porque un
+      # bloque PEM multilinea se puede truncar al pegarlo en el panel.
       - key: DB_SSL
         value: "true"
-      - key: DB_SSL_CA
+      - key: DB_SSL_CA_B64
         sync: false
 
       # --- Cloudinary (fotos de items) ---
