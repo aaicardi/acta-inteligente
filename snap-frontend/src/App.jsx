@@ -579,7 +579,16 @@ export default function App() {
             >
               Encabezado
             </button>
-            <ColaChip estado={pendientesSistema ? 'cola' : 'sincronizado'}>{pendientesSistema ? `${pendientesSistema} en cola` : 'Sincronizado'}</ColaChip>
+            {/* Sincronizado se reduce al punto verde: la palabra no anade nada
+                que el color no diga ya, y en moviles estrechos le robaba el
+                ancho al titulo del acta. Los pendientes si llevan texto,
+                porque el numero es un dato que el icono no puede dar. */}
+            <ColaChip
+              estado={pendientesSistema ? 'cola' : 'sincronizado'}
+              title={pendientesSistema ? `${pendientesSistema} en cola` : 'Sincronizado'}
+            >
+              {pendientesSistema ? `${pendientesSistema} en cola` : null}
+            </ColaChip>
           </div>
         }
       />

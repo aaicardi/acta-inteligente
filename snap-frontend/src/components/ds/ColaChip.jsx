@@ -1,20 +1,26 @@
-export default function ColaChip({ estado = 'cola', children, style }) {
+export default function ColaChip({ estado = 'cola', children, style, title }) {
   const sinc = estado === 'sincronizado';
+  // Sin texto el chip queda como un punto: no debe reservar el hueco del gap
+  // ni el padding lateral pensado para una etiqueta.
+  const soloIcono = !children;
   return (
     <span
+      title={title}
+      aria-label={title}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '6px',
+        gap: soloIcono ? 0 : '6px',
         fontFamily: 'var(--mono)',
         fontSize: 'var(--t-11)',
         letterSpacing: 'var(--track-dato)',
         background: '#fff',
         border: `var(--bd) solid ${sinc ? 'var(--sello-bd)' : 'var(--linea)'}`,
         color: sinc ? 'var(--sello)' : 'var(--tinta-70)',
-        padding: '5px 9px',
+        padding: soloIcono ? '5px 7px' : '5px 9px',
         borderRadius: 'var(--r-chip)',
         whiteSpace: 'nowrap',
+        flexShrink: 0,
         ...style,
       }}
     >
