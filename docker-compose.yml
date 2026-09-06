@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: acta-inteligente-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: acta_inteligente
+      MYSQL_USER: acta_app
+      MYSQL_PASSWORD: acta_app_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./snap-backend/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./snap-backend
+    container_name: acta-inteligente-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./snap-backend/.env
+    environment:
+      # Sobreescriben el .env: en compose la base es el contenedor local,
+      # no la gestionada en la nube (que si exige TLS).
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: acta_app
+      DB_PASSWORD: acta_app_pass
+      DB_NAME: acta_inteligente
+      DB_SSL: "false"
+      CORS_ORIGINS: http://localhost:5173
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./snap-frontend
+      args:
+        VITE_API_URL: http://localhost:3001
+    container_name: acta-inteligente-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

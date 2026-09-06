@@ -4,3 +4,9 @@ node_modules/
 output_pruebas/
 zip_prueba.zip
 resultado_zip.json
+
+# Certificado CA de la base gestionada: no va al repo.
+certs/
+
+# Copias de respaldo del .env: contienen credenciales.
+.env.backup*

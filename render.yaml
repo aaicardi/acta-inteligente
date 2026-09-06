@@ -4,10 +4,45 @@ services:
     runtime: node
     rootDir: snap-backend
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci --omit=dev
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
+      # --- OpenAI (vision) ---
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_VISION_MODEL
         value: gpt-4o-mini
+
+      # --- MySQL gestionado (Aiven) ---
+      # Host/puerto/usuario/base no son secretos; la contrasena si.
+      - key: DB_HOST
+        value: mysql-23f32eeb-acta-inteligente.e.aivencloud.com
+      - key: DB_PORT
+        value: "18599"
+      - key: DB_USER
+        value: avnadmin
+      - key: DB_NAME
+        value: defaultdb
+      - key: DB_PASSWORD
+        sync: false
+      # Aiven exige TLS y firma con su propia CA. Render no permite subir
+      # archivos, asi que el ca.pem va pegado entero en DB_SSL_CA.
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_CA
+        sync: false
+
+      # --- Cloudinary (fotos de items) ---
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # --- CORS ---
+      # Dominio del frontend en Vercel. Separar por comas si hay varios
+      # (produccion y previews).
+      - key: CORS_ORIGINS
+        sync: false
