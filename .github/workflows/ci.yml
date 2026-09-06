@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: snap-backend/package-lock.json
+      - run: npm ci
+        working-directory: snap-backend
+      # No hay suite de tests todavia; al menos verificamos que todo el codigo
+      # parsea y que el servidor se puede cargar sin credenciales reales.
+      - name: Verificar sintaxis
+        run: node --check src/server.js && node --check src/db/pool.js
+        working-directory: snap-backend
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: snap-frontend/package-lock.json
+      - run: npm ci
+        working-directory: snap-frontend
+      - run: npm run lint
+        working-directory: snap-frontend
+      - name: Build
+        run: npm run build
+        working-directory: snap-frontend
+        env:
+          # Solo para validar que compila; el valor real lo inyecta Vercel.
+          VITE_API_URL: https://ejemplo.invalid
