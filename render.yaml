@@ -14,6 +14,18 @@ services:
       - key: OPENAI_VISION_MODEL
         value: gpt-4o-mini
 
+      # --- Proveedor de IA para vision: openai (por defecto) o deepseek ---
+      - key: VISION_PROVIDER
+        value: openai
+      # Solo si VISION_PROVIDER=deepseek. deepseek no esta validado en
+      # produccion (su modelo de vision es experimental).
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_VISION_MODEL
+        value: deepseek-v4-flash-vision-exp
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+
       # --- MySQL gestionado (Aiven) ---
       # Host/puerto/usuario/base no son secretos; la contrasena si.
       - key: DB_HOST

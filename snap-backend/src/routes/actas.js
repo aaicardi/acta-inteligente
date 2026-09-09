@@ -3,7 +3,7 @@ const actasDb = require('../db/actas');
 const itemsDb = require('../db/items');
 const fotosDb = require('../db/fotos');
 const cloudinaryService = require('../services/cloudinaryService');
-const { analizarProducto } = require('../services/visionService');
+const { analizarProducto, validarFotos } = require('../services/visionService');
 const { generarActa } = require('../services/excelService');
 
 const router = express.Router();
@@ -136,6 +136,8 @@ router.post('/actas/:id/items/:itemId/analizar', async (req, res) => {
   }
 
   try {
+    validarFotos(fotosBase64);
+
     let fotosGuardadas = await fotosDb.listarPorItem(itemId);
 
     if (fotosGuardadas.length === 0) {
@@ -173,6 +175,9 @@ router.post('/actas/:id/items/:itemId/analizar', async (req, res) => {
     if (err.code === 'SIN_API_KEY') {
       console.error(err.message);
       return res.status(503).json({ error: 'El servicio de IA no está configurado en el backend.' });
+    }
+    if (err.code === 'FOTO_MUY_GRANDE') {
+      return res.status(413).json({ error: err.message });
     }
     console.error('Error analizando producto:', err);
     return res.status(502).json({ error: 'No se pudo analizar el producto con IA. Intenta de nuevo.' });
