@@ -9,7 +9,7 @@ import HistoricoDetalle from './components/HistoricoDetalle';
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
 import ModalCuenta from './components/ModalCuenta';
-import { AppHeader, ColaChip, BarraExcepcion, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar } from './components/ds';
+import { AppHeader, ColaChip, BarraExcepcion, AvisoIA, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar } from './components/ds';
 import * as api from './lib/api';
 import { useActaEnCurso } from './hooks/useActaEnCurso';
 import { useHistorico, useActaDetalle } from './hooks/useHistorico';
@@ -485,6 +485,8 @@ export default function App() {
         </p>
       )}
 
+      <AvisoIA claveActa={String(encabezado.doNo || '')} />
+
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s3)', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}>
         <BarraExcepcion cantidad={revisarCount} onRevisar={abrirPrimeraRevision} />
         <ListaItems items={itemsOrdenados} onActualizar={actualizarItem} onAbrir={abrirItem} />
@@ -518,6 +520,10 @@ export default function App() {
         <Boton variante="acta" talla="tap" disabled={items.length === 0} onClick={() => setPantalla('cierre')}>
           Generar acta
         </Boton>
+        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--t-12)', color: 'var(--grafito)', lineHeight: 'var(--alto-nota)' }}>
+          <span aria-hidden="true">○</span>
+          Los datos los propone una herramienta de IA y puede cometer errores. Revísalos antes de generar el acta.
+        </p>
       </div>
 
       <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />

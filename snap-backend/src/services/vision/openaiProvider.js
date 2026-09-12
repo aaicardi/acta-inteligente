@@ -4,7 +4,16 @@ const { SYSTEM_PROMPT, JSON_SCHEMA } = require('./prompt');
 // Se resuelve en cada llamada (no al importar) para que el default aplique
 // aunque la variable llegue vacia, que es lo que promete .env.example.
 function modelo() {
-  return process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini';
+  return process.env.OPENAI_VISION_MODEL || 'gpt-5.6-luna';
+}
+
+// Los modelos "reasoning" (gpt-5.x, serie o1/o3) rechazan temperature con un
+// 400 ("Unsupported parameter") porque solo aceptan el valor por defecto.
+// Se detecta por prefijo de nombre para no mandar el campo en esos casos.
+const MODELOS_SIN_TEMPERATURA = [/^gpt-5/, /^o1/, /^o3/];
+
+function soportaTemperatura(nombreModelo) {
+  return !MODELOS_SIN_TEMPERATURA.some((re) => re.test(nombreModelo));
 }
 
 let _client = null;
@@ -56,9 +65,10 @@ async function crearCompletionConReintentos(payload, intentosRestantes = 3) {
 // el costo de IA por empresa (ver services/consumoIaService.js), en vez de
 // descartarlo como se hacia antes.
 async function extraerDatosProducto(fotosBase64) {
-  const response = await crearCompletionConReintentos({
-    model: modelo(),
-    temperature: 0,
+  const nombreModelo = modelo();
+
+  const payload = {
+    model: nombreModelo,
     response_format: { type: 'json_schema', json_schema: JSON_SCHEMA },
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -73,12 +83,18 @@ async function extraerDatosProducto(fotosBase64) {
         ],
       },
     ],
-  });
+  };
+
+  if (soportaTemperatura(nombreModelo)) {
+    payload.temperature = 0;
+  }
+
+  const response = await crearCompletionConReintentos(payload);
 
   return {
     datos: JSON.parse(response.choices[0].message.content),
     usage: response.usage,
-    modelo: modelo(),
+    modelo: nombreModelo,
   };
 }
 
