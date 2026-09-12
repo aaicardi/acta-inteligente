@@ -35,8 +35,11 @@ function client() {
   return _client;
 }
 
+// Ver el mismo comentario en openaiProvider.js: acepta data URL/base64 o una
+// URL http(s) ya alojada en Cloudinary.
 function aImageUrl(foto) {
-  return { type: 'image_url', image_url: { url: foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}` } };
+  const esUrl = foto.startsWith('http://') || foto.startsWith('https://') || foto.startsWith('data:');
+  return { type: 'image_url', image_url: { url: esUrl ? foto : `data:image/jpeg;base64,${foto}` } };
 }
 
 function esperar(ms) {
@@ -60,7 +63,9 @@ async function crearCompletionConReintentos(payload, intentosRestantes = 3) {
   }
 }
 
-// Envía las fotos a DeepSeek y devuelve el JSON ya parseado según JSON_SCHEMA.
+// Envía las fotos a DeepSeek y devuelve el JSON ya parseado según JSON_SCHEMA,
+// junto al `usage` (tokens) que devuelve la API — misma interfaz que
+// openaiProvider, para medir el costo de IA por empresa.
 async function extraerDatosProducto(fotosBase64) {
   const response = await crearCompletionConReintentos({
     model: MODEL,
@@ -81,7 +86,11 @@ async function extraerDatosProducto(fotosBase64) {
     ],
   });
 
-  return JSON.parse(response.choices[0].message.content);
+  return {
+    datos: JSON.parse(response.choices[0].message.content),
+    usage: response.usage,
+    modelo: MODEL,
+  };
 }
 
 module.exports = { extraerDatosProducto };

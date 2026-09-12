@@ -76,6 +76,11 @@ const pool = mysql.createPool({
   ssl: opcionesSsl(),
   waitForConnections: true,
   connectionLimit: 10,
+  // Sin esto, mysql2 negocia una codificacion que corrompe tildes y eñes
+  // (nombres de clientes, descripciones de producto) aunque las columnas ya
+  // esten en utf8mb4 — el charset se fija en el protocolo de conexion, no en
+  // el esquema.
+  charset: 'utf8mb4',
 });
 
 module.exports = pool;

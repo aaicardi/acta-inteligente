@@ -20,13 +20,29 @@ export default function Modal({ titulo, onCerrar, children }) {
           <h2 style={{ flex: 1, fontSize: 'var(--t-titulo-app)', fontWeight: 'var(--peso-bold)', letterSpacing: 'var(--track-h4)', color: 'var(--tinta)' }}>
             {titulo}
           </h2>
+          {/* Texto explícito, no solo un ícono "✕": un símbolo solo es fácil
+              de pasar por alto (reporte real de un usuario sobre AdminPanel,
+              que usaba el mismo patrón). */}
           <button
             type="button"
             onClick={onCerrar}
-            aria-label="Cerrar"
-            style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-h4)', background: 'none', border: 'none', color: 'var(--tinta-70)', cursor: 'pointer', padding: '0 4px' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontFamily: 'var(--sans)',
+              fontSize: 'var(--t-13)',
+              fontWeight: 'var(--peso-medio)',
+              color: 'var(--tinta)',
+              background: 'var(--fondo-tarjeta)',
+              border: 'var(--bd) solid var(--linea)',
+              borderRadius: 'var(--r-chip)',
+              padding: '6px 10px',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
           >
-            ✕
+            <span aria-hidden="true">✕</span> Cerrar
           </button>
         </div>
         {children}

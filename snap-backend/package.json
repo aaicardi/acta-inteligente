@@ -10,15 +10,21 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "migrate": "node scripts/migrar.js",
+    "test": "node --test tests/",
     "test:generar-ejemplo": "node scripts/test-generar-ejemplo.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cloudinary": "^2.5.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
     "mysql2": "^3.11.5",
-    "openai": "^6.49.0"
+    "openai": "^6.49.0",
+    "zod": "^4.6.2"
   }
 }

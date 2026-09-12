@@ -5,6 +5,11 @@ const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'ACTA_compra
 const SHEET_NAME = 'Acta';
 
 // Ver plantilla.md para la explicación completa de estos números de fila.
+// Toda plantilla (la default o una subida por una empresa, ver 3.5 del spec)
+// DEBE respetar este mismo esqueleto de filas: el motor que redimensiona la
+// tabla de items, clona estilos y reconstruye merges depende de que estas
+// filas existan en esta posicion exacta. Una plantilla personalizada solo
+// puede cambiar textos fijos, logo, colores — nunca mover estas filas.
 const HEADER_ROW = 12;
 const FIRST_ITEM_ROW = 13;
 const ORIGINAL_ITEM_ROWS = 21; // filas 13-33 en la plantilla original
@@ -32,12 +37,43 @@ function applyRow(worksheet, rowNumber, captured, overrideValues) {
   }
 }
 
-// La cantidad es opcional: nunca bloquea la generación del acta. El
-// inspector la completa cuando quiere (incluso después, directamente en el
-// Excel) — ver spec.md, corregido tras feedback real de uso.
-async function generarActa({ encabezado, items }) {
+// Reglas minimas que cualquier plantilla debe cumplir para que el motor de
+// generacion no escriba en celdas equivocadas: la hoja 'Acta', suficientes
+// filas para contener el esqueleto completo, y al menos una fila de ejemplo
+// con contenido en la zona de items y en la de pie de pagina (una plantilla
+// sin esas filas rellenas sugiere que no tiene esa estructura). La fila
+// STYLE_TEMPLATE_ROW (33) NO se valida con contenido: por diseño es la fila
+// "plana" vacia que el motor clona para dar estilo a items nuevos.
+// No valida el CONTENIDO de las celdas del encabezado (B6, D6, etc.) — el
+// admin puede vaciarlas o poner otro texto ahi, es lo que se sobreescribe.
+function validarPlantilla(workbook) {
+  const worksheet = workbook.getWorksheet(SHEET_NAME);
+  if (!worksheet) {
+    return `La plantilla debe tener una hoja llamada "${SHEET_NAME}".`;
+  }
+
+  if (worksheet.rowCount < FOOTER_START_ROW + 4) {
+    return 'La plantilla debe conservar la misma estructura de filas (encabezado, tabla de ítems y pie de página) que la plantilla original.';
+  }
+
+  const filaVacia = (n) => worksheet.getRow(n).values.length === 0;
+  if (filaVacia(FIRST_ITEM_ROW) || filaVacia(FOOTER_START_ROW + 1)) {
+    return 'La plantilla debe conservar la misma estructura de filas (encabezado, tabla de ítems y pie de página) que la plantilla original.';
+  }
+
+  return null;
+}
+
+// Buffer|string opcional: por defecto lee la plantilla del proyecto
+// (TEMPLATE_PATH). Una empresa con plantilla propia pasa su buffer, ya
+// descargado de Cloudinary por quien la sirve (routes/empresa.js).
+async function generarActa({ encabezado, items }, fuentePlantilla = TEMPLATE_PATH) {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(TEMPLATE_PATH);
+  if (Buffer.isBuffer(fuentePlantilla)) {
+    await workbook.xlsx.load(fuentePlantilla);
+  } else {
+    await workbook.xlsx.readFile(fuentePlantilla);
+  }
   const worksheet = workbook.getWorksheet(SHEET_NAME);
 
   // 1. Capturar estilos del pie de página ANTES de tocar la tabla de ítems.
@@ -109,4 +145,17 @@ async function generarActa({ encabezado, items }) {
   return workbook.xlsx.writeBuffer();
 }
 
-module.exports = { generarActa, TEMPLATE_PATH };
+// Se llama al subir una plantilla nueva (routes/empresa.js), antes de
+// guardarla: si no es valida, se rechaza sin gastar una subida a Cloudinary.
+// Devuelve un mensaje de error, o null si la plantilla es valida.
+async function validarPlantillaBuffer(buffer) {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    return validarPlantilla(workbook);
+  } catch {
+    return 'El archivo no es un .xlsx válido.';
+  }
+}
+
+module.exports = { generarActa, validarPlantillaBuffer, TEMPLATE_PATH };

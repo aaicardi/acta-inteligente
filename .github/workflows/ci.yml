@@ -9,6 +9,31 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    # La suite de tests corre contra MySQL real (tests/aislamiento.test.js
+    # verifica el aislamiento multi-tenant sobre datos reales, no mocks) — de
+    # ahi el servicio. Sin DB_SSL definido, pool.js no exige TLS: el healthcheck
+    # espera a que el servidor acepte conexiones antes de correr los tests.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: acta_inteligente
+          MYSQL_USER: acta_app
+          MYSQL_PASSWORD: acta_app_pass
+          MYSQL_ROOT_PASSWORD: root_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot_pass"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: acta_app
+      DB_PASSWORD: acta_app_pass
+      DB_NAME: acta_inteligente
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,10 +43,14 @@ jobs:
           cache-dependency-path: snap-backend/package-lock.json
       - run: npm ci
         working-directory: snap-backend
-      # No hay suite de tests todavia; al menos verificamos que todo el codigo
-      # parsea y que el servidor se puede cargar sin credenciales reales.
       - name: Verificar sintaxis
         run: node --check src/server.js && node --check src/db/pool.js
+        working-directory: snap-backend
+      - name: Aplicar migraciones
+        run: npm run migrate
+        working-directory: snap-backend
+      - name: Tests
+        run: npm test
         working-directory: snap-backend
 
   frontend:
