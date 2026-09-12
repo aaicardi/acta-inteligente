@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import EncabezadoForm from './components/EncabezadoForm';
 import ListaItems from './components/ListaItems';
 import CapturaProducto from './components/CapturaProducto';
@@ -6,15 +6,13 @@ import ItemDetalleModal from './components/ItemDetalleModal';
 import Modal from './components/Modal';
 import Historico from './components/Historico';
 import HistoricoDetalle from './components/HistoricoDetalle';
+import Login from './components/Login';
+import AdminPanel from './components/AdminPanel';
+import ModalCuenta from './components/ModalCuenta';
 import { AppHeader, ColaChip, BarraExcepcion, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar } from './components/ds';
 import * as api from './lib/api';
-
-// Los fallos de red (sin señal) van a "en_cola" para reintentar solos al
-// reconectar. Cualquier otro fallo (backend caído, IA sin configurar, límite
-// de la API) va a "revisar" con el motivo visible.
-function esFalloDeRed(err) {
-  return err instanceof TypeError;
-}
+import { useActaEnCurso } from './hooks/useActaEnCurso';
+import { useHistorico, useActaDetalle } from './hooks/useHistorico';
 
 function sinCantidad(item) {
   return item.cantidad === '' || item.cantidad === null || item.cantidad === undefined;
@@ -28,206 +26,118 @@ function ordenarPorNumero(lista) {
   return [...lista].sort((a, b) => Number(a.orden) - Number(b.orden));
 }
 
-const DEBOUNCE_MS = 400;
-
 export default function App() {
+  const [sesion, setSesion] = useState(() => api.leerSesion());
   const [seccion, setSeccion] = useState('inspeccion');
   const [pantalla, setPantalla] = useState('cargando');
-  const [actaId, setActaId] = useState(null);
-  const [encabezado, setEncabezado] = useState(null);
-  const [items, setItems] = useState([]);
   const [mostrarCaptura, setMostrarCaptura] = useState(false);
   const [mostrarEncabezado, setMostrarEncabezado] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState('');
   const [itemAbiertoId, setItemAbiertoId] = useState(null);
   const [resumenGenerado, setResumenGenerado] = useState(null);
+  const [mostrarAdmin, setMostrarAdmin] = useState(false);
+  const [mostrarCuenta, setMostrarCuenta] = useState(false);
 
-  const [actas, setActas] = useState([]);
-  const [cargandoHistorico, setCargandoHistorico] = useState(false);
-  const [errorHistorico, setErrorHistorico] = useState('');
-  const [busquedaHistorico, setBusquedaHistorico] = useState('');
   const [vistaHistorico, setVistaHistorico] = useState('lista');
-  const [actaDetalle, setActaDetalle] = useState(null);
-  const [cargandoDetalle, setCargandoDetalle] = useState(false);
-  const [errorDetalle, setErrorDetalle] = useState('');
+  const [actaDetalleId, setActaDetalleId] = useState(null);
   const [descargandoDetalle, setDescargandoDetalle] = useState(false);
+  const [errorDetalle, setErrorDetalle] = useState('');
 
-  const debounceRef = useRef({});
+  const esAdmin = sesion?.usuario?.rol === 'admin';
 
-  // El contador "N guardadas" del TabBar necesita el conteo de actas desde el
-  // arranque, no solo cuando el inspector entra a la pestaña Histórico —
-  // si no, refrescar la página muestra "0" hasta la primera visita a Actas.
+  // El admin no diligencia actas (el backend ya rechaza con 403 crear/editar):
+  // no tiene sentido ni siquiera consultar el acta en curso para ese rol.
+  const {
+    acta,
+    cargando: cargandoActa,
+    crearActa,
+    actualizarEncabezado,
+    agregarItem: agregarItemMutation,
+    actualizarItem,
+    actualizarNumero,
+    eliminarItem: eliminarItemMutation,
+    reintentarItem,
+    reintentarEnCola,
+    generar,
+    abrirActaExistente,
+  } = useActaEnCurso(!!sesion && !esAdmin);
+
+  const historico = useHistorico(!!sesion);
+  const {
+    data: actaDetalle,
+    isLoading: cargandoDetalle,
+    error: errorDetalleQuery,
+  } = useActaDetalle(vistaHistorico === 'detalle' ? actaDetalleId : null);
+
+  const encabezado = acta;
+  const items = acta?.items || [];
+
+  // Si el backend rechaza la sesión (expirada o revocada), la app vuelve al
+  // login sin que cada llamada tenga que gestionarlo por su cuenta.
   useEffect(() => {
-    api.listarActas().then(setActas).catch(() => {});
+    api.cuandoExpireLaSesion(() => setSesion(null));
   }, []);
 
+  // Una vez que se resuelve si hay acta en curso, decide la pantalla inicial.
+  // El admin nunca pasa por "inspección": entra directo al histórico, que es
+  // lo único que le compete ver de las actas.
   useEffect(() => {
-    (async () => {
-      try {
-        const enCurso = await api.obtenerActaEnCurso();
-        if (enCurso) {
-          setActaId(enCurso.id);
-          setEncabezado(enCurso);
-          setItems(enCurso.items || []);
-          setPantalla('trabajo');
-        } else {
-          setPantalla('inicio');
-        }
-      } catch {
-        setPantalla('inicio');
-      }
-    })();
-  }, []);
+    if (!sesion) return;
+    if (esAdmin) {
+      setSeccion('historico');
+      return;
+    }
+    if (cargandoActa) return;
+    setPantalla(acta ? 'trabajo' : 'inicio');
+    // Solo debe correr cuando termina la carga inicial, no en cada cambio de
+    // `acta` (que ocurre todo el tiempo mientras se trabaja en ella).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sesion, esAdmin, cargandoActa]);
+
+  // Al recuperar señal, reintenta solos todos los ítems "en_cola".
+  useEffect(() => {
+    window.addEventListener('online', reintentarEnCola);
+    return () => window.removeEventListener('online', reintentarEnCola);
+  }, [reintentarEnCola]);
 
   const iniciarNuevaActa = useCallback(async () => {
     setError('');
     try {
-      const acta = await api.crearActa();
-      setActaId(acta.id);
-      setEncabezado(acta);
-      setItems([]);
+      await crearActa();
       setResumenGenerado(null);
       setPantalla('trabajo');
       setMostrarEncabezado(true);
     } catch (err) {
       setError(err.message);
     }
+  }, [crearActa]);
+
+  // Tras generar un acta ya no queda "acta en curso" (se limpió en
+  // useActaEnCurso.generar): distinto de "Nueva acta", que crea una de una
+  // vez, esto solo lleva a la pantalla de inicio sin diligenciar nada más.
+  const irAlInicio = useCallback(() => {
+    setResumenGenerado(null);
+    setPantalla('inicio');
   }, []);
 
-  const actualizarEncabezado = useCallback(
-    (campo, valor) => {
-      setEncabezado((prev) => ({ ...prev, [campo]: valor }));
-      clearTimeout(debounceRef.current[campo]);
-      debounceRef.current[campo] = setTimeout(async () => {
-        try {
-          await api.actualizarEncabezado(actaId, { [campo]: valor });
-        } catch (err) {
-          setError(err.message);
-        }
-      }, DEBOUNCE_MS);
-    },
-    [actaId]
-  );
-
-  const analizarYActualizar = useCallback(
-    async (id, fotosParaAnalizar) => {
-      try {
-        const item = await api.analizarItem(actaId, id, fotosParaAnalizar);
-        setItems((prev) => prev.map((it) => (it.id === id ? item : it)));
-      } catch (err) {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.id === id
-              ? esFalloDeRed(err)
-                ? { ...it, estado: 'en_cola', motivoRevision: 'Sin conexión; se reintentará automáticamente.' }
-                : { ...it, estado: 'revisar', motivoRevision: err.message }
-              : it
-          )
-        );
-      }
-    },
-    [actaId]
-  );
-
   const agregarItem = useCallback(
-    async ({ fotos, cantidad, numero }) => {
-      const numeroLimpio = Number(numero);
-      if (!numero || Number.isNaN(numeroLimpio)) {
-        throw new Error('Ingresa el número de ítem de la factura.');
-      }
-      if (items.some((it) => Number(it.orden) === numeroLimpio)) {
-        throw new Error(`El ítem ${numeroLimpio} ya existe. Usa otro número.`);
-      }
-
-      const creado = await api.agregarItem(actaId, { orden: numeroLimpio });
-      const nuevo = { ...creado, fotos, cantidad, estado: 'analizando' };
-      setItems((prev) => [...prev, nuevo]);
+    async (datos) => {
       setMostrarCaptura(false);
-      await analizarYActualizar(creado.id, fotos);
-      if (cantidad !== '' && cantidad !== undefined) {
-        try {
-          await api.actualizarItem(actaId, creado.id, { cantidad });
-        } catch (err) {
-          setError(err.message);
-        }
-      }
+      await agregarItemMutation(datos);
     },
-    [items, actaId, analizarYActualizar]
-  );
-
-  const reintentarItem = useCallback(
-    async (id) => {
-      const item = items.find((it) => it.id === id);
-      if (!item) return;
-      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, estado: 'analizando' } : it)));
-      await analizarYActualizar(id, item.fotos || []);
-    },
-    [items, analizarYActualizar]
-  );
-
-  // Al recuperar señal, reintenta solos todos los ítems "en_cola".
-  useEffect(() => {
-    function alReconectar() {
-      setItems((prev) => {
-        prev.filter((it) => it.estado === 'en_cola').forEach((it) => reintentarItem(it.id));
-        return prev;
-      });
-    }
-    window.addEventListener('online', alReconectar);
-    return () => window.removeEventListener('online', alReconectar);
-  }, [reintentarItem]);
-
-  const actualizarItem = useCallback(
-    (id, cambios) => {
-      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...cambios } : it)));
-      const key = `item-${id}`;
-      clearTimeout(debounceRef.current[key]);
-      debounceRef.current[key] = setTimeout(async () => {
-        try {
-          await api.actualizarItem(actaId, id, cambios);
-        } catch (err) {
-          setError(err.message);
-        }
-      }, DEBOUNCE_MS);
-    },
-    [actaId]
-  );
-
-  // No se puede repetir número de ítem: valida contra el resto de la lista
-  // antes de pedirlo al backend, y devuelve el mensaje de error para
-  // mostrarlo en el formulario (o '' si quedó bien).
-  const actualizarNumero = useCallback(
-    async (id, numero) => {
-      const numeroLimpio = Number(numero);
-      if (numero === '' || numero === null || numero === undefined || Number.isNaN(numeroLimpio)) {
-        return 'Ingresa un número de ítem.';
-      }
-      const duplicado = items.some((it) => it.id !== id && Number(it.orden) === numeroLimpio);
-      if (duplicado) {
-        return `El ítem ${numeroLimpio} ya existe.`;
-      }
-      try {
-        await api.actualizarNumeroItem(actaId, id, numeroLimpio);
-        setItems((prev) => prev.map((it) => (it.id === id ? { ...it, orden: numeroLimpio } : it)));
-        return '';
-      } catch (err) {
-        return err.message;
-      }
-    },
-    [items, actaId]
+    [agregarItemMutation]
   );
 
   const eliminarItem = useCallback(
     async (id) => {
       try {
-        await api.eliminarItem(actaId, id);
-        setItems((prev) => prev.filter((it) => it.id !== id));
+        await eliminarItemMutation(id);
       } catch (err) {
         setError(err.message);
       }
     },
-    [actaId]
+    [eliminarItemMutation]
   );
 
   const abrirItem = useCallback((id) => setItemAbiertoId(id), []);
@@ -239,93 +149,77 @@ export default function App() {
     if (primero) abrirItem(primero.id);
   }, [items, abrirItem]);
 
+  function descargar(blob, nombreArchivo) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   // La cantidad es opcional siempre: nunca bloquea "Generar acta". La
   // pantalla de cierre solo la resalta para que el inspector la revise antes
   // de firmar.
-  const generarActa = useCallback(async () => {
+  const generarActaYCerrar = useCallback(async () => {
     setError('');
     setGenerando(true);
     try {
-      const blob = await api.generarActa(actaId);
-      const nombreArchivo = `acta_${encabezado.doNo || 'sin_do'}.xlsx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombreArchivo;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-
-      setResumenGenerado({
-        doNo: encabezado.doNo,
-        archivo: nombreArchivo,
-        items: items.length,
-        bultos: encabezado.bultos,
-        peso: encabezado.peso,
-      });
-
-      setItems([]);
-      setEncabezado(null);
-      setActaId(null);
+      const { blob, resumen } = await generar();
+      descargar(blob, resumen.archivo);
+      setResumenGenerado(resumen);
       setPantalla('exito');
     } catch (err) {
       setError(err.message);
     } finally {
       setGenerando(false);
     }
-  }, [actaId, encabezado, items]);
-
-  const cargarHistorico = useCallback(async (q) => {
-    setCargandoHistorico(true);
-    setErrorHistorico('');
-    try {
-      const lista = await api.listarActas(q ? { q } : {});
-      setActas(lista);
-    } catch (err) {
-      setErrorHistorico(err.message);
-    } finally {
-      setCargandoHistorico(false);
-    }
-  }, []);
+  }, [generar]);
 
   const irAHistorico = useCallback(() => {
     setSeccion('historico');
     setVistaHistorico('lista');
-    cargarHistorico(busquedaHistorico);
-  }, [cargarHistorico, busquedaHistorico]);
+  }, []);
 
-  useEffect(() => {
-    if (seccion !== 'historico' || vistaHistorico !== 'lista') return;
-    const timeout = setTimeout(() => cargarHistorico(busquedaHistorico), DEBOUNCE_MS);
-    return () => clearTimeout(timeout);
-  }, [busquedaHistorico, seccion, vistaHistorico, cargarHistorico]);
+  // "cuenta" no es una sección con su propia pantalla (a diferencia de
+  // inspeccion/historico): abre un modal encima de lo que se esté viendo, así
+  // que el TabBar siempre da acceso a sesión/admin sin importar en qué
+  // pantalla del flujo esté el inspector.
+  const manejarCambioTab = useCallback(
+    (tab) => {
+      if (tab === 'inspeccion' && !esAdmin) setSeccion('inspeccion');
+      else if (tab === 'historico') irAHistorico();
+      else if (tab === 'cuenta') setMostrarCuenta(true);
+    },
+    [irAHistorico, esAdmin]
+  );
+
+  const cerrarSesion = useCallback(() => {
+    api.cerrarSesion();
+    setSesion(null);
+  }, []);
+
+  const abrirActaHistorico = useCallback((id) => {
+    setVistaHistorico('detalle');
+    setActaDetalleId(id);
+  }, []);
 
   // Un acta "en_curso" todavía se está diligenciando: abrirla debe llevar al
   // inspector de vuelta al flujo normal de captura/edición, no a la vista de
-  // solo lectura (esa es exclusiva de actas ya "generada").
-  const abrirActaHistorico = useCallback(async (id) => {
-    setVistaHistorico('detalle');
-    setCargandoDetalle(true);
-    setErrorDetalle('');
-    setActaDetalle(null);
-    try {
-      const acta = await api.obtenerActaDetalle(id);
-      if (acta.estado === 'en_curso') {
-        setActaId(acta.id);
-        setEncabezado(acta);
-        setItems(acta.items || []);
-        setSeccion('inspeccion');
-        setPantalla('trabajo');
-        return;
-      }
-      setActaDetalle(acta);
-    } catch (err) {
-      setErrorDetalle(err.message);
-    } finally {
-      setCargandoDetalle(false);
+  // solo lectura (esa es exclusiva de actas ya "generada"). Reacciona al
+  // resultado del propio useActaDetalle en vez de hacer un fetch aparte, para
+  // no pedir el mismo detalle dos veces. El admin nunca entra a ese flujo (no
+  // diligencia actas): se queda viendo el detalle en solo lectura tal cual.
+  useEffect(() => {
+    if (esAdmin) return;
+    if (actaDetalle?.estado === 'en_curso') {
+      abrirActaExistente(actaDetalle);
+      setSeccion('inspeccion');
+      setPantalla('trabajo');
     }
-  }, []);
+  }, [actaDetalle, abrirActaExistente, esAdmin]);
 
   const descargarDesdeHistorico = useCallback(async () => {
     if (!actaDetalle) return;
@@ -333,15 +227,7 @@ export default function App() {
     setErrorDetalle('');
     try {
       const blob = await api.generarActa(actaDetalle.id);
-      const nombreArchivo = `acta_${actaDetalle.doNo || 'sin_do'}.xlsx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombreArchivo;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      descargar(blob, `acta_${actaDetalle.doNo || 'sin_do'}.xlsx`);
     } catch (err) {
       setErrorDetalle(err.message);
     } finally {
@@ -349,23 +235,27 @@ export default function App() {
     }
   }, [actaDetalle]);
 
+  if (!sesion) {
+    return <Login onEntrar={setSesion} />;
+  }
+
+  let contenido;
+
   if (pantalla === 'cargando' && seccion === 'inspeccion') {
-    return (
+    contenido = (
       <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--mono)', fontSize: 'var(--t-13)', color: 'var(--grafito)' }}>
         Cargando…
       </div>
     );
-  }
-
-  if (seccion === 'historico') {
-    const tabBar = <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />;
-    return vistaHistorico === 'lista' ? (
+  } else if (seccion === 'historico') {
+    const tabBar = <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />;
+    contenido = vistaHistorico === 'lista' ? (
       <Historico
-        actas={actas}
-        cargando={cargandoHistorico}
-        error={errorHistorico}
-        busqueda={busquedaHistorico}
-        onBusqueda={setBusquedaHistorico}
+        actas={historico.actas}
+        cargando={historico.cargando}
+        error={historico.error}
+        busqueda={historico.busqueda}
+        onBusqueda={historico.onBusqueda}
         onAbrir={abrirActaHistorico}
         tabBar={tabBar}
       />
@@ -373,17 +263,15 @@ export default function App() {
       <HistoricoDetalle
         acta={actaDetalle}
         cargando={cargandoDetalle}
-        error={errorDetalle}
+        error={errorDetalle || errorDetalleQuery?.message || ''}
         descargando={descargandoDetalle}
         onVolver={() => setVistaHistorico('lista')}
         onDescargar={descargarDesdeHistorico}
         tabBar={tabBar}
       />
     );
-  }
-
-  if (pantalla === 'inicio') {
-    return (
+  } else if (pantalla === 'inicio') {
+    contenido = (
       <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
         <div
           style={{
@@ -411,16 +299,14 @@ export default function App() {
             </Boton>
           </div>
         </div>
-        <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />
+        <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />
       </div>
     );
-  }
-
-  if (pantalla === 'cierre') {
+  } else if (pantalla === 'cierre') {
     const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
     const itemsCierre = ordenarPorNumero(items.filter((it) => it.estado !== 'analizando' && it.estado !== 'en_cola'));
     const faltantes = itemsCierre.filter(sinCantidad).length;
-    return (
+    contenido = (
       <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
         <AppHeader
           titulo={faltantes ? (faltantes === 1 ? 'Falta 1 cantidad' : `Faltan ${faltantes} cantidades`) : 'Cierre del acta'}
@@ -504,7 +390,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ background: '#fff', borderTop: 'var(--bd) solid var(--linea)', padding: '10px var(--s3) var(--s3)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Boton variante="acta" talla="lg" disabled={generando} onClick={generarActa}>
+          <Boton variante="acta" talla="lg" disabled={generando} onClick={generarActaYCerrar}>
             {generando ? 'Generando acta…' : 'Generar acta · GO.PD.02-F.02'}
           </Boton>
           <Boton variante="secundaria" talla="md" onClick={() => setPantalla('trabajo')}>
@@ -513,10 +399,8 @@ export default function App() {
         </div>
       </div>
     );
-  }
-
-  if (pantalla === 'exito' && resumenGenerado) {
-    return (
+  } else if (pantalla === 'exito' && resumenGenerado) {
+    contenido = (
       <div
         style={{
           position: 'fixed',
@@ -542,19 +426,21 @@ export default function App() {
           <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-13)', color: 'var(--tinta)', letterSpacing: 'var(--track-dato)' }}>{resumenGenerado.archivo}</div>
           <ResumenActa doNo={resumenGenerado.doNo} items={resumenGenerado.items} bultos={resumenGenerado.bultos} peso={resumenGenerado.peso} />
         </Tarjeta>
-        <Boton variante="secundaria" talla="md" onClick={iniciarNuevaActa}>
+        <Boton variante="primaria" talla="md" onClick={iniciarNuevaActa}>
           Nueva acta
+        </Boton>
+        <Boton variante="secundaria" talla="md" onClick={irAlInicio}>
+          Ir al inicio
         </Boton>
       </div>
     );
-  }
+  } else {
+    const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
+    const revisarCount = items.filter((it) => it.estado === 'revisar').length;
+    const itemsOrdenados = ordenarPorNumero(items);
+    const numerosUsados = items.map((it) => it.orden);
 
-  const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
-  const revisarCount = items.filter((it) => it.estado === 'revisar').length;
-  const itemsOrdenados = ordenarPorNumero(items);
-  const numerosUsados = items.map((it) => it.orden);
-
-  return (
+    contenido = (
     <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
       <AppHeader
         titulo="Acta en curso"
@@ -634,7 +520,23 @@ export default function App() {
         </Boton>
       </div>
 
-      <TabBar activa={seccion} onCambiar={(s) => (s === 'inspeccion' ? setSeccion('inspeccion') : irAHistorico())} totalActas={actas.length} />
+      <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />
     </div>
+    );
+  }
+
+  return (
+    <>
+      {contenido}
+      {mostrarCuenta && (
+        <ModalCuenta
+          sesion={sesion}
+          onCerrar={() => setMostrarCuenta(false)}
+          onCerrarSesion={cerrarSesion}
+          onAbrirAdmin={() => setMostrarAdmin(true)}
+        />
+      )}
+      {mostrarAdmin && <AdminPanel onCerrar={() => setMostrarAdmin(false)} />}
+    </>
   );
 }

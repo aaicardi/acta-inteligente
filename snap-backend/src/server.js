@@ -2,6 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const actasRoutes = require('./routes/actas');
+const authRoutes = require('./routes/auth');
+const usuariosRoutes = require('./routes/usuarios');
+const empresaRoutes = require('./routes/empresa');
+const { limitarLogin, limitarAnalisis } = require('./middleware/rateLimit');
+const logger = require('./services/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,7 +21,7 @@ const origenes = (process.env.CORS_ORIGINS || '')
   .filter(Boolean);
 
 if (origenes.length === 0) {
-  console.warn('[cors] CORS_ORIGINS vacio: se aceptan peticiones de cualquier origen.');
+  logger.warn('CORS_ORIGINS vacío: se aceptan peticiones de cualquier origen.');
 }
 
 app.use(
@@ -24,11 +29,23 @@ app.use(
     origin: origenes.length > 0 ? origenes : true,
   })
 );
-app.use(express.json({ limit: '50mb' })); // fotos en base64 viajan en el body
+// Las fotos ya no viajan en el body (se suben directo a Cloudinary, ver
+// firma-subida): 1mb cubre de sobra el JSON mas grande real (un item con
+// varios "datosAdicionales" no llega ni de lejos a eso).
+app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// El limitador de analisis va antes de las rutas de actas para que proteja el
+// endpoint que gasta creditos de IA aunque la peticion venga autenticada.
+app.use('/auth/login', limitarLogin);
+app.use('/actas/:id/items/:itemId/analizar', limitarAnalisis);
+
+app.use('/', authRoutes);
+app.use('/', usuariosRoutes);
+app.use('/', empresaRoutes);
 app.use('/', actasRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Acta Inteligente backend escuchando en http://localhost:${PORT}`);
+  logger.info(`Acta Inteligente backend escuchando en http://localhost:${PORT}`);
 });

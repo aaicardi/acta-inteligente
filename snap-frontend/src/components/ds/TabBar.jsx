@@ -1,12 +1,21 @@
 const TABS = [
   { key: 'inspeccion', label: 'Inspección', meta: 'Diligenciar' },
   { key: 'historico', label: 'Actas' },
+  { key: 'cuenta', label: 'Cuenta', meta: 'Sesión' },
 ];
 
-export default function TabBar({ activa, onCambiar, totalActas = 0 }) {
+// El admin gestiona la empresa (usuarios, plantilla, consumo, auditoria) pero
+// no diligencia actas — eso es trabajo del inspector, y el backend ya lo
+// rechaza con 403 si se intenta. Ocultar la pestaña aqui evita ofrecer una
+// accion que de todas formas fallaria.
+export default function TabBar({ activa, onCambiar, totalActas = 0, ocultarInspeccion = false }) {
+  const tabs = ocultarInspeccion ? TABS.filter((t) => t.key !== 'inspeccion') : TABS;
   return (
     <div style={{ flexShrink: 0, background: '#fff', borderTop: 'var(--bd) solid var(--linea)', display: 'flex' }}>
-      {TABS.map((t) => {
+      {tabs.map((t) => {
+        // "cuenta" abre un modal, no una pestaña con estado propio: nunca
+        // queda marcada como activa (activa solo vale 'inspeccion' o
+        // 'historico' en App.jsx).
         const on = activa === t.key;
         return (
           <button
