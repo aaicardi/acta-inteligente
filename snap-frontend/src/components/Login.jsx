@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { Boton, Campo } from './ds';
 import * as api from '../lib/api';
+import logoGIIA from '../image/logoGIIA.jpg';
 
 export default function Login({ onEntrar }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState('');
   const [entrando, setEntrando] = useState(false);
 
+  const faltanDatos = !email || !password;
+
   async function enviar(e) {
     e.preventDefault();
-    if (!email || !password) {
+    if (faltanDatos) {
       setError('Ingresa tu email y contraseña.');
       return;
     }
@@ -42,25 +46,18 @@ export default function Login({ onEntrar }) {
         onSubmit={enviar}
         style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', gap: 'var(--s3)' }}
       >
-        <div style={{ marginBottom: 'var(--s2)' }}>
-          <h1
-            style={{
-              fontFamily: 'var(--sans)',
-              fontWeight: 'var(--peso-semi)',
-              fontSize: 'var(--t-22)',
-              color: 'var(--tinta)',
-              margin: 0,
-            }}
-          >
-            Acta Inteligente
-          </h1>
-          <p style={{ fontSize: 'var(--t-13)', color: 'var(--grafito)', margin: 'var(--s1) 0 0' }}>
-            Ingresa con tu cuenta para continuar.
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--s2)' }}>
+          <img src={logoGIIA} alt="GIIA" style={{ width: '100%', maxWidth: '260px', height: 'auto' }} />
+        </div>
+
+        <div style={{ marginBottom: 'var(--s2)', textAlign: 'center' }}>
+          <p style={{ fontSize: 'var(--t-15)', color: 'var(--tinta)', margin: 0, lineHeight: 'var(--alto-base)' }}>
+            Ingresa con tu cuenta para continuar. El acta se firma con tu usuario.
           </p>
         </div>
 
         <Campo
-          etiqueta="Email"
+          etiqueta="Correo"
           type="email"
           mono={false}
           valor={email}
@@ -69,19 +66,68 @@ export default function Login({ onEntrar }) {
           disabled={entrando}
         />
 
-        <Campo
-          etiqueta="Contraseña"
-          type="password"
-          mono={false}
-          valor={password}
-          onChange={setPassword}
-          disabled={entrando}
-          error={error}
-        />
+        <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <label
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-10)',
+                letterSpacing: 'var(--track-label)',
+                textTransform: 'uppercase',
+                color: 'var(--grafito)',
+                display: 'block',
+                marginBottom: 'var(--s1)',
+              }}
+            >
+              Contraseña
+            </label>
+            <button
+              type="button"
+              onClick={() => setMostrarPassword((v) => !v)}
+              disabled={entrando}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-10)',
+                letterSpacing: 'var(--track-label)',
+                textTransform: 'uppercase',
+                color: 'var(--boli)',
+                background: 'none',
+                border: 'none',
+                cursor: entrando ? 'not-allowed' : 'pointer',
+                padding: 0,
+                marginBottom: 'var(--s1)',
+              }}
+            >
+              {mostrarPassword ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+          <Campo
+            type={mostrarPassword ? 'text' : 'password'}
+            mono={false}
+            valor={password}
+            onChange={setPassword}
+            disabled={entrando}
+            error={error}
+          />
+        </div>
 
-        <Boton type="submit" talla="lg" disabled={entrando}>
-          {entrando ? 'Entrando…' : 'Entrar'}
+        <Boton type="submit" talla="lg" disabled={entrando || faltanDatos}>
+          {entrando ? 'Entrando…' : faltanDatos ? 'Entrar · faltan datos' : 'Entrar'}
         </Boton>
+
+        {!error && (
+          <p style={{ fontSize: 'var(--t-13)', color: 'var(--grafito)', margin: 0, textAlign: 'center' }}>
+            {faltanDatos ? 'Escribe tu correo y tu contraseña.' : 'Todo listo para entrar.'}
+          </p>
+        )}
+
+        <hr style={{ border: 'none', borderTop: 'var(--bd) solid var(--linea)', margin: 'var(--s2) 0 0' }} />
+
+        <div style={{ textAlign: 'center' }}>
+          <a href="#" style={{ fontSize: 'var(--t-13)', textDecoration: 'none' }}>
+            Olvidé mi contraseña
+          </a>
+        </div>
       </form>
     </div>
   );
