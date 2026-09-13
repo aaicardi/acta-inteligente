@@ -8,6 +8,12 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      # --- Sesiones ---
+      # Render lo genera solo la primera vez y lo mantiene entre despliegues.
+      # Cambiarlo invalida todas las sesiones activas.
+      - key: JWT_SECRET
+        generateValue: true
+
       # --- OpenAI (vision) ---
       - key: OPENAI_API_KEY
         sync: false

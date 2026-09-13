@@ -1,7 +1,20 @@
 const OpenAI = require('openai');
 const { SYSTEM_PROMPT, JSON_SCHEMA } = require('./prompt');
 
-const MODEL = process.env.OPENAI_VISION_MODEL;
+// Se resuelve en cada llamada (no al importar) para que el default aplique
+// aunque la variable llegue vacia, que es lo que promete .env.example.
+function modelo() {
+  return process.env.OPENAI_VISION_MODEL || 'gpt-5.6-luna';
+}
+
+// Los modelos "reasoning" (gpt-5.x, serie o1/o3) rechazan temperature con un
+// 400 ("Unsupported parameter") porque solo aceptan el valor por defecto.
+// Se detecta por prefijo de nombre para no mandar el campo en esos casos.
+const MODELOS_SIN_TEMPERATURA = [/^gpt-5/, /^o1/, /^o3/];
+
+function soportaTemperatura(nombreModelo) {
+  return !MODELOS_SIN_TEMPERATURA.some((re) => re.test(nombreModelo));
+}
 
 let _client = null;
 function client() {
@@ -16,8 +29,13 @@ function client() {
   return _client;
 }
 
+// Acepta tanto un data URL/base64 crudo (fotos analizadas en el momento de
+// subirlas) como una URL http(s) ya alojada en Cloudinary (subida directa
+// desde el navegador, ver cloudinaryService.firmarSubida): OpenAI descarga la
+// imagen de la URL igual que si fuera un data URL.
 function aImageUrl(foto) {
-  return { type: 'image_url', image_url: { url: foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}` } };
+  const esUrl = foto.startsWith('http://') || foto.startsWith('https://') || foto.startsWith('data:');
+  return { type: 'image_url', image_url: { url: esUrl ? foto : `data:image/jpeg;base64,${foto}` } };
 }
 
 function esperar(ms) {
@@ -42,11 +60,15 @@ async function crearCompletionConReintentos(payload, intentosRestantes = 3) {
   }
 }
 
-// Envía las fotos a OpenAI y devuelve el JSON ya parseado según JSON_SCHEMA.
+// Envía las fotos a OpenAI y devuelve el JSON ya parseado según JSON_SCHEMA,
+// junto al `usage` (tokens) que devuelve la API — se propaga para poder medir
+// el costo de IA por empresa (ver services/consumoIaService.js), en vez de
+// descartarlo como se hacia antes.
 async function extraerDatosProducto(fotosBase64) {
-  const response = await crearCompletionConReintentos({
-    model: MODEL,
-    temperature: 0,
+  const nombreModelo = modelo();
+
+  const payload = {
+    model: nombreModelo,
     response_format: { type: 'json_schema', json_schema: JSON_SCHEMA },
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -61,9 +83,19 @@ async function extraerDatosProducto(fotosBase64) {
         ],
       },
     ],
-  });
+  };
 
-  return JSON.parse(response.choices[0].message.content);
+  if (soportaTemperatura(nombreModelo)) {
+    payload.temperature = 0;
+  }
+
+  const response = await crearCompletionConReintentos(payload);
+
+  return {
+    datos: JSON.parse(response.choices[0].message.content),
+    usage: response.usage,
+    modelo: nombreModelo,
+  };
 }
 
 module.exports = { extraerDatosProducto };

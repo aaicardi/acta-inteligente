@@ -31,17 +31,25 @@ function tamanoBase64Bytes(foto) {
   return Math.floor((datos.length * 3) / 4) - relleno;
 }
 
+function esUrlHttp(foto) {
+  return foto.startsWith('http://') || foto.startsWith('https://');
+}
+
 // Valida fotos antes de gastar cualquier operación costosa (subida a
 // Cloudinary, llamada a la IA). Se expone aparte para que la ruta pueda
 // llamarla antes de subir las fotos, no solo antes de analizarlas.
-function validarFotos(fotosBase64) {
-  if (!Array.isArray(fotosBase64) || fotosBase64.length === 0) {
+//
+// El límite de tamaño solo aplica a base64 crudo: una foto ya subida a
+// Cloudinary (subida directa desde el navegador) llega como URL, y el tamaño
+// ya lo validó Cloudinary del lado del cliente al recibirla.
+function validarFotos(fotos) {
+  if (!Array.isArray(fotos) || fotos.length === 0) {
     const err = new Error('Se requiere al menos una foto.');
     err.code = 'SIN_FOTOS';
     throw err;
   }
 
-  const fotoGrande = fotosBase64.find((foto) => tamanoBase64Bytes(foto) > TAMANO_MAXIMO_FOTO_BYTES);
+  const fotoGrande = fotos.find((foto) => !esUrlHttp(foto) && tamanoBase64Bytes(foto) > TAMANO_MAXIMO_FOTO_BYTES);
   if (fotoGrande) {
     const err = new Error('Una de las fotos supera el tamaño máximo permitido (20MB).');
     err.code = 'FOTO_MUY_GRANDE';
@@ -49,10 +57,18 @@ function validarFotos(fotosBase64) {
   }
 }
 
-async function analizarProducto(fotosBase64) {
+// El extractor es un parametro opcional (por defecto el proveedor activo) para
+// que los tests puedan inyectar uno de prueba sin tocar variables de entorno
+// ni credenciales reales — ver tests/visionService.test.js.
+//
+// extractor() devuelve { datos, usage, modelo }: usage/modelo se propagan tal
+// cual para que la ruta los registre en consumoIaService sin que esta funcion
+// tenga que conocer esa tabla ni el empresaId/itemId (eso es contexto de la
+// ruta, no del analisis en si).
+async function analizarProducto(fotosBase64, extractor = extraerDatosProducto) {
   validarFotos(fotosBase64);
 
-  const parsed = await extraerDatosProducto(fotosBase64);
+  const { datos: parsed, usage, modelo } = await extractor(fotosBase64);
   const estado = parsed.confianza < CONFIANZA_UMBRAL || parsed.motivoRevision ? 'revisar' : 'listo';
 
   return {
@@ -66,7 +82,9 @@ async function analizarProducto(fotosBase64) {
     confianza: parsed.confianza,
     motivoRevision: parsed.motivoRevision,
     estado,
+    usage,
+    modeloIa: modelo,
   };
 }
 
-module.exports = { analizarProducto, validarFotos, CONFIANZA_UMBRAL };
+module.exports = { analizarProducto, validarFotos, construirDescripcion, CONFIANZA_UMBRAL };
