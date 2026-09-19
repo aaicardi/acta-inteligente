@@ -133,4 +133,25 @@ async function eliminar(id, empresaId) {
   return item.fotos;
 }
 
+
+async function marcarHuerfanosComoRevisar(umbralMinutos) {
+
+  const [huerfanos] = await pool.query(
+    `SELECT i.id, i.acta_id, a.empresa_id FROM items i
+     JOIN actas a ON a.id = i.acta_id
+     WHERE i.estado = 'analizando' AND i.actualizado_en < DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
+    [umbralMinutos]
+  );
+  if (huerfanos.length === 0) return [];
+
+  await pool.query(
+    `UPDATE items SET estado = 'revisar', motivo_revision = ?
+     WHERE id IN (${huerfanos.map(() => '?').join(',')})`,
+    ['El análisis se interrumpió. Vuelve a intentarlo.', ...huerfanos.map((h) => h.id)]
+  );
+
+  return huerfanos.map((h) => ({ itemId: h.id, actaId: h.acta_id, empresaId: h.empresa_id }));
+}
+
 module.exports = { crear, obtenerPorId, listarPorActa, actualizar, actualizarOrden, eliminar };
+module.exports.sistema = { marcarHuerfanosComoRevisar };

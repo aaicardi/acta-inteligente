@@ -1,10 +1,6 @@
 import { AppHeader, Tarjeta, Campo, ResumenActa, Boton } from './ds';
 import ItemHistoricoCard from './ItemHistoricoCard';
-
-function formatearFecha(fecha) {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+import { formatearFecha } from '../lib/formato';
 
 export default function HistoricoDetalle({ acta, cargando, error, descargando, onVolver, onDescargar, tabBar }) {
   if (cargando || !acta) {

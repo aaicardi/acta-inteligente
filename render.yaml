@@ -14,6 +14,14 @@ services:
       - key: JWT_SECRET
         generateValue: true
 
+      # --- Recuperacion de analisis huerfanos al arrancar ---
+      # Minutos de antiguedad tras los cuales un item en 'analizando' se
+      # considera huerfano (el proceso se reinicio a mitad del analisis) y se
+      # marca 'revisar'. Ver src/services/recuperacionAnalisis.js. Opcional:
+      # sin esta variable, el backend usa 5 minutos por defecto.
+      - key: UMBRAL_ANALISIS_HUERFANO_MIN
+        value: "5"
+
       # --- OpenAI (vision) ---
       - key: OPENAI_API_KEY
         sync: false

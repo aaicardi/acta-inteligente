@@ -2,15 +2,15 @@ const express = require('express');
 const usuariosDb = require('../db/usuarios');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { validarBody } = require('../middleware/validar');
+const { crearManejadorError } = require('../middleware/manejarError');
 const esquemas = require('../schemas/usuarios');
-const logger = require('../services/logger');
 const auditoriaService = require('../services/auditoriaService');
 
 const router = express.Router();
 
-// El admin solo administra usuarios de SU empresa: el empresaId sale siempre
-// de la sesión, nunca del body, para que no se pueda crear un usuario dentro
-// de otra empresa manipulando la petición.
+const manejarError = crearManejadorError({ EMAIL_DUPLICADO: 409 });
+
+
 router.use('/usuarios', requireAuth, requireAdmin);
 
 router.get('/usuarios', async (req, res) => {
@@ -18,8 +18,7 @@ router.get('/usuarios', async (req, res) => {
     const usuarios = await usuariosDb.listarPorEmpresa(req.auth.empresaId);
     return res.json(usuarios);
   } catch (err) {
-    logger.error('No se pudo listar usuarios', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo listar los usuarios.' });
+    return manejarError(req, res, err, 'No se pudo listar los usuarios.');
   }
 });
 
@@ -44,9 +43,7 @@ router.post('/usuarios', validarBody(esquemas.crear), async (req, res) => {
     });
     return res.status(201).json(usuario);
   } catch (err) {
-    if (err.code === 'EMAIL_DUPLICADO') return res.status(409).json({ error: err.message });
-    logger.error('No se pudo crear el usuario', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo crear el usuario.' });
+    return manejarError(req, res, err, 'No se pudo crear el usuario.');
   }
 });
 
@@ -54,8 +51,7 @@ router.patch('/usuarios/:id', validarBody(esquemas.actualizar), async (req, res)
   try {
     const usuario = await usuariosDb.actualizar(req.params.id, req.auth.empresaId, req.body);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado.' });
-    // Solo si cambio rol o estado: son los campos con implicacion de permisos,
-    // no cada edicion trivial del nombre.
+
     if (req.body.rol !== undefined || req.body.estado !== undefined) {
       await auditoriaService.registrar({
         empresaId: req.auth.empresaId,
@@ -68,8 +64,7 @@ router.patch('/usuarios/:id', validarBody(esquemas.actualizar), async (req, res)
     }
     return res.json(usuario);
   } catch (err) {
-    logger.error('No se pudo actualizar el usuario', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo actualizar el usuario.' });
+    return manejarError(req, res, err, 'No se pudo actualizar el usuario.');
   }
 });
 
@@ -79,8 +74,7 @@ router.post('/usuarios/:id/password', validarBody(esquemas.cambiarPassword), asy
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado.' });
     return res.json(usuario);
   } catch (err) {
-    logger.error('No se pudo cambiar la contraseña', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo cambiar la contraseña.' });
+    return manejarError(req, res, err, 'No se pudo cambiar la contraseña.');
   }
 });
 

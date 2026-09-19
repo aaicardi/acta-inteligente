@@ -1,9 +1,5 @@
 import { AppHeader, Tarjeta, EstadoBadge } from './ds';
-
-function formatearFecha(fecha) {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+import { formatearFecha } from '../lib/formato';
 
 export default function Historico({ actas, cargando, error, busqueda, onBusqueda, onAbrir, tabBar }) {
   return (
