@@ -26,7 +26,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_VISION_MODEL
-        value: gpt-4o-mini
+        value: gpt-5.6-luna
 
       # --- Proveedor de IA para vision: openai (por defecto) o deepseek ---
       - key: VISION_PROVIDER
