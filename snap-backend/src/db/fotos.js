@@ -1,9 +1,7 @@
 const pool = require('./pool');
 const { urlFirmada } = require('../services/cloudinaryService');
 
-// La url guardada en la fila es la que devolvio Cloudinary al subir; para las
-// fotos privadas no sirve por si sola. Se firma al leer, no al guardar, para
-// que el enlace caduque aunque la fila viva para siempre.
+
 function aCamelCase(fila) {
   return {
     id: fila.id,
@@ -14,8 +12,8 @@ function aCamelCase(fila) {
   };
 }
 
-async function crear({ itemId, url, publicId, orden }) {
-  const [res] = await pool.query('INSERT INTO fotos (item_id, url, public_id, orden) VALUES (?, ?, ?, ?)', [
+async function crear({ itemId, url, publicId, orden }, conn = pool) {
+  const [res] = await conn.query('INSERT INTO fotos (item_id, url, public_id, orden) VALUES (?, ?, ?, ?)', [
     itemId,
     url,
     publicId,
@@ -29,9 +27,7 @@ async function listarPorItem(itemId) {
   return filas.map(aCamelCase);
 }
 
-// Trae las fotos de varios items en una sola query (evita el N+1 de pedirlas
-// item por item al listar un acta) y las agrupa por item_id para que el
-// llamador solo tenga que indexar el mapa resultante.
+
 async function listarPorItems(itemIds) {
   if (itemIds.length === 0) return new Map();
 
@@ -55,8 +51,6 @@ async function eliminarPorItem(itemId) {
   return fotos;
 }
 
-// listarPorItem y crear no reciben empresaId a proposito: solo se llaman desde
-// items.js/actas.js, que ya resolvieron la pertenencia del item a la empresa.
-// Exponerlas a una ruta directamente saltaria ese control.
+
 
 module.exports = { crear, listarPorItem, listarPorItems, eliminarPorItem };

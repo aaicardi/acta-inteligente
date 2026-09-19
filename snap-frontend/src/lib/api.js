@@ -1,8 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const CLAVE_SESION = 'acta-inteligente:sesion';
 
-// La sesión vive en localStorage para que el inspector no tenga que volver a
-// entrar cada vez que la PWA se reinicia en medio de una jornada.
+
 export function leerSesion() {
   try {
     const crudo = localStorage.getItem(CLAVE_SESION);
@@ -16,7 +15,7 @@ function guardarSesion(sesion) {
   try {
     localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
   } catch {
-    // Modo privado o almacenamiento bloqueado: la sesión dura lo que la pestaña.
+
   }
 }
 
@@ -28,8 +27,7 @@ export function cerrarSesion() {
   }
 }
 
-// Se avisa a la app cuando el backend rechaza la sesión, para que vuelva al
-// login sin que cada llamada tenga que saber manejarlo.
+
 let alExpirar = () => {};
 export function cuandoExpireLaSesion(callback) {
   alExpirar = callback;
@@ -57,6 +55,18 @@ async function leerError(res, mensajePorDefecto) {
   return new Error(data.error || `${mensajePorDefecto} (HTTP ${res.status})`);
 }
 
+
+async function manejarRespuesta(res, mensajePorDefecto, parsear = (r) => r.json()) {
+  if (res.status === 401) {
+    cerrarSesion();
+    alExpirar();
+    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+  }
+  if (!res.ok) throw await leerError(res, mensajePorDefecto);
+  if (res.status === 204) return null;
+  return parsear(res);
+}
+
 async function solicitar(path, { method = 'GET', body, mensajePorDefecto } = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -66,14 +76,7 @@ async function solicitar(path, { method = 'GET', body, mensajePorDefecto } = {})
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) {
-    cerrarSesion();
-    alExpirar();
-    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
-  }
-  if (!res.ok) throw await leerError(res, mensajePorDefecto);
-  if (res.status === 204) return null;
-  return res.json();
+  return manejarRespuesta(res, mensajePorDefecto);
 }
 
 export function crearActa() {
@@ -92,10 +95,38 @@ export function agregarItem(actaId, { orden }) {
   return solicitar(`/actas/${actaId}/items`, { method: 'POST', body: { orden }, mensajePorDefecto: 'No se pudo agregar el producto' });
 }
 
-// Sube un archivo directo a Cloudinary con una firma ya emitida por el
-// backend (ver api.solicitarFirmaSubida): el binario nunca pasa por Render,
-// solo la firma. FormData + fetch nativo, sin SDK de Cloudinary en el cliente.
-async function subirDirectoACloudinary(archivo, firma) {
+const COMPRESION_LADO_MAX_PX = 1600;
+const COMPRESION_CALIDAD = 0.82;
+
+
+async function comprimirImagen(archivo) {
+  if (!archivo.type?.startsWith('image/')) return archivo;
+
+  try {
+    const bitmap = await createImageBitmap(archivo);
+    const escala = Math.min(1, COMPRESION_LADO_MAX_PX / Math.max(bitmap.width, bitmap.height));
+    if (escala === 1) {
+      bitmap.close();
+      return archivo; // ya es mas chica que el maximo, no hay nada que ganar
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * escala);
+    canvas.height = Math.round(bitmap.height * escala);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', COMPRESION_CALIDAD));
+    return blob || archivo; // toBlob puede devolver null en navegadores raros
+  } catch {
+    return archivo; // cualquier fallo de compresion no debe bloquear la subida
+  }
+}
+
+
+async function subirDirectoACloudinary(archivoOriginal, firma) {
+  const archivo = await comprimirImagen(archivoOriginal);
   const formData = new FormData();
   formData.append('file', archivo);
   formData.append('api_key', firma.apiKey);
@@ -113,10 +144,7 @@ async function subirDirectoACloudinary(archivo, firma) {
   return { url: data.secure_url, publicId: data.public_id };
 }
 
-// `fotos` llega en dos formas segun el momento: File[] recien capturados (hay
-// que subirlos primero) o los objetos {url, publicId} que ya devolvio el
-// backend en un intento anterior (reintentarItem) — esos ya estan en
-// Cloudinary y no se vuelven a subir.
+
 export async function analizarItem(actaId, itemId, fotos) {
   const yaSubidas = fotos.filter((f) => !(f instanceof Blob));
   const pendientes = fotos.filter((f) => f instanceof Blob);
@@ -154,13 +182,7 @@ export async function generarActa(actaId) {
     method: 'POST',
     headers: cabeceraAuth(),
   });
-  if (res.status === 401) {
-    cerrarSesion();
-    alExpirar();
-    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
-  }
-  if (!res.ok) throw await leerError(res, 'No se pudo generar el acta');
-  return res.blob();
+  return manejarRespuesta(res, 'No se pudo generar el acta', (r) => r.blob());
 }
 
 export function listarActas({ q, estado } = {}) {
@@ -175,18 +197,27 @@ export function obtenerActaDetalle(actaId) {
   return solicitar(`/actas/${actaId}`, { mensajePorDefecto: 'No se pudo consultar el acta' });
 }
 
+// Version liviana para el polling de esperarAnalisis: trae solo el item, no
+// el acta completa con todos sus items y fotos (ver routes/actas.js). Con
+// varios items analizandose a la vez, cada poller pedia el acta entera cada
+// 2s — esto evita ese trafico redundante.
+async function obtenerEstadoItem(actaId, itemId) {
+  const res = await fetch(`${BASE_URL}/actas/${actaId}/items/${itemId}/estado`, { headers: cabeceraAuth() });
+  if (res.status === 404) return null; // el item se elimino mientras se analizaba
+  return manejarRespuesta(res, 'No se pudo consultar el estado del producto');
+}
+
 const POLL_INTERVALO_MS = 2000;
 const POLL_MAX_INTENTOS = 60; // 2min: cubre reintentos de rate limit de la IA
 
 // El analisis corre en segundo plano en el backend (POST /analizar responde
-// 202 de inmediato); esto consulta el acta hasta que el item deje de estar
+// 202 de inmediato); esto consulta el item hasta que deje de estar
 // 'analizando', para que la UI vea el resultado sin bloquear la peticion HTTP
 // original en todo el tiempo que tarde la IA.
 export async function esperarAnalisis(actaId, itemId) {
   for (let intento = 0; intento < POLL_MAX_INTENTOS; intento += 1) {
     await new Promise((r) => setTimeout(r, POLL_INTERVALO_MS));
-    const acta = await obtenerActaDetalle(actaId);
-    const item = acta.items.find((it) => it.id === itemId);
+    const item = await obtenerEstadoItem(actaId, itemId);
     if (!item) return null; // el item se elimino mientras se analizaba
     if (item.estado !== 'analizando') return item;
   }
@@ -229,13 +260,7 @@ export async function subirPlantilla(archivo) {
     headers: cabeceraAuth(),
     body: formData,
   });
-  if (res.status === 401) {
-    cerrarSesion();
-    alExpirar();
-    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
-  }
-  if (!res.ok) throw await leerError(res, 'No se pudo subir la plantilla');
-  return res.json();
+  return manejarRespuesta(res, 'No se pudo subir la plantilla');
 }
 
 export function restaurarPlantilla() {

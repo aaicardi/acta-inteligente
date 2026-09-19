@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { AppHeader, Boton, Tarjeta, EstadoBadge, Campo } from './ds';
 import { useUsuarios, useConsumoIa, useAuditoria, usePlantilla } from '../hooks/useAdmin';
+import { formatearFechaHora as formatearFecha } from '../lib/formato';
 
 const TABS = [
   { id: 'usuarios', label: 'Usuarios' },
@@ -8,11 +9,6 @@ const TABS = [
   { id: 'plantilla', label: 'Plantilla' },
   { id: 'auditoria', label: 'Auditoría' },
 ];
-
-function formatearFecha(fecha) {
-  if (!fecha) return '—';
-  return new Date(fecha).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
 
 function SeccionUsuarios() {
   const { usuarios, cargando, error, crear, actualizar } = useUsuarios();
@@ -234,7 +230,7 @@ export default function AdminPanel({ onCerrar }) {
   const [tab, setTab] = useState('usuarios');
 
   return (
-    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)', zIndex: 40 }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bond)', zIndex: 40 }}>
       <AppHeader
         titulo="Administración"
         chip={
@@ -288,10 +284,12 @@ export default function AdminPanel({ onCerrar }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)' }}>
-        {tab === 'usuarios' && <SeccionUsuarios />}
-        {tab === 'consumo' && <SeccionConsumo />}
-        {tab === 'plantilla' && <SeccionPlantilla />}
-        {tab === 'auditoria' && <SeccionAuditoria />}
+        <div className="mx-auto w-full lg:max-w-[720px]">
+          {tab === 'usuarios' && <SeccionUsuarios />}
+          {tab === 'consumo' && <SeccionConsumo />}
+          {tab === 'plantilla' && <SeccionPlantilla />}
+          {tab === 'auditoria' && <SeccionAuditoria />}
+        </div>
       </div>
     </div>
   );

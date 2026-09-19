@@ -1,9 +1,7 @@
 const authService = require('../services/authService');
 const logger = require('../services/logger');
 
-// Monta req.auth = { userId, empresaId, rol }. Todas las rutas de negocio
-// cuelgan de aquí: sin req.auth no hay empresaId, y sin empresaId la capa de
-// datos no puede resolver ninguna consulta.
+
 function requireAuth(req, res, next) {
   const cabecera = req.headers.authorization || '';
   const [esquema, token] = cabecera.split(' ');
@@ -32,10 +30,7 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-// Separacion estricta de responsabilidades: el admin gestiona la empresa
-// (usuarios, plantilla, consumo, auditoria) pero no diligencia actas — eso es
-// trabajo del inspector. Se aplica solo a las rutas de escritura (crear,
-// analizar, generar); la lectura del historico sigue abierta a ambos roles.
+
 function requireInspector(req, res, next) {
   if (req.auth?.rol === 'admin') {
     return res.status(403).json({ error: 'Los administradores no diligencian actas. Usa una cuenta de inspector.' });
@@ -43,4 +38,14 @@ function requireInspector(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth, requireAdmin, requireInspector };
+const MENSAJE_ADMIN_NO_DILIGENCIA = 'Los administradores no diligencian actas. Usa una cuenta de inspector.';
+
+
+function bloquearAdminSiEnCurso(acta, rol) {
+  if (acta.estado === 'en_curso' && rol === 'admin') {
+    return MENSAJE_ADMIN_NO_DILIGENCIA;
+  }
+  return null;
+}
+
+module.exports = { requireAuth, requireAdmin, requireInspector, bloquearAdminSiEnCurso };

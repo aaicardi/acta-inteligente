@@ -3,6 +3,7 @@ const actasDb = require('../db/actas');
 const itemsDb = require('../db/items');
 const fotosDb = require('../db/fotos');
 const empresasDb = require('../db/empresas');
+const { ejecutarEnTransaccion } = require('../db/transaccion');
 const cloudinaryService = require('../services/cloudinaryService');
 const { analizarProducto, validarFotos } = require('../services/visionService');
 const colaAnalisis = require('../services/colaAnalisis');
@@ -10,30 +11,30 @@ const consumoIaService = require('../services/consumoIaService');
 const auditoriaService = require('../services/auditoriaService');
 const { generarActa } = require('../services/excelService');
 const plantillaService = require('../services/plantillaService');
-const { requireAuth, requireInspector } = require('../middleware/auth');
+const { requireAuth, requireInspector, bloquearAdminSiEnCurso } = require('../middleware/auth');
 const { validarBody } = require('../middleware/validar');
+const { crearManejadorError } = require('../middleware/manejarError');
 const esquemas = require('../schemas/actas');
 const logger = require('../services/logger');
 
 const router = express.Router();
 
-// Todas las rutas de actas exigen sesión: de req.auth sale el empresaId que
-// la capa de datos necesita para aislar los datos de cada cliente.
+
 router.use(requireAuth);
 
-function manejarError(req, res, err, mensajePorDefecto) {
-  if (err.code === 'ITEM_DUPLICADO') {
-    return res.status(409).json({ error: err.message });
-  }
-  logger.error(mensajePorDefecto, err, { empresaId: req.auth?.empresaId, ruta: req.originalUrl });
-  return res.status(500).json({ error: mensajePorDefecto });
-}
+const manejarError = crearManejadorError({ ITEM_DUPLICADO: 409 });
 
 const NO_ENCONTRADA = { error: 'Acta no encontrada.' };
 const ITEM_NO_ENCONTRADO = { error: 'Producto no encontrado.' };
 
 async function borrarFotosEnCloudinary(fotos) {
-  await Promise.all(fotos.map((foto) => cloudinaryService.eliminarFoto(foto.publicId).catch(() => {})));
+  await Promise.all(
+    fotos.map((foto) =>
+      cloudinaryService.eliminarFoto(foto.publicId).catch((err) =>
+        logger.warn('No se pudo eliminar foto en Cloudinary', { publicId: foto.publicId, error: err.message })
+      )
+    )
+  );
 }
 
 router.post('/actas', requireInspector, async (req, res) => {
@@ -71,6 +72,17 @@ router.get('/actas/:id', async (req, res) => {
     return res.json(acta);
   } catch (err) {
     return manejarError(req, res, err, 'No se pudo consultar el acta.');
+  }
+});
+
+
+router.get('/actas/:id/items/:itemId/estado', async (req, res) => {
+  try {
+    const item = await itemsDb.obtenerPorId(req.params.itemId, req.auth.empresaId);
+    if (!item || item.actaId !== Number(req.params.id)) return res.status(404).json(ITEM_NO_ENCONTRADO);
+    return res.json(item);
+  } catch (err) {
+    return manejarError(req, res, err, 'No se pudo consultar el estado del producto.');
   }
 });
 
@@ -153,10 +165,7 @@ router.delete('/actas/:id/items/:itemId', requireInspector, async (req, res) => 
   }
 });
 
-// Firma para que el navegador suba las fotos de este item directo a
-// Cloudinary (sin pasar por el backend, ver cloudinaryService.firmarSubida).
-// Una sola firma cubre todas las fotos del lote: el folder+timestamp firmados
-// son los mismos para todas.
+
 router.post('/actas/:id/items/:itemId/firma-subida', requireInspector, async (req, res) => {
   try {
     const { empresaId } = req.auth;
@@ -180,9 +189,7 @@ router.post('/actas/:id/items/:itemId/firma-subida', requireInspector, async (re
   }
 });
 
-// Traduce los errores conocidos de analizarProducto al estado 'revisar' del
-// item, para que el trabajo en segundo plano deje rastro visible en vez de
-// morir en silencio (el inspector ya recibio el 202 y no vera esta excepcion).
+
 function motivoDeError(err, contexto) {
   if (err.code === 'SIN_API_KEY') {
     logger.error('Falta la clave de API del proveedor de IA', err, contexto);
@@ -193,11 +200,7 @@ function motivoDeError(err, contexto) {
   return 'No se pudo analizar el producto con IA. Intenta de nuevo.';
 }
 
-// Recibe fotos que el navegador ya subio directo a Cloudinary (url+publicId),
-// las persiste y responde 202 de inmediato dejando el item en 'analizando':
-// el analisis con la IA corre en segundo plano (ver colaAnalisis) para que la
-// peticion HTTP no quede bloqueada esperando a OpenAI. El frontend consulta
-// GET /actas/:id hasta que el item deje de estar 'analizando'.
+
 router.post('/actas/:id/items/:itemId/analizar', requireInspector, validarBody(esquemas.analizarItem), async (req, res) => {
   const { itemId } = req.params;
   const { empresaId } = req.auth;
@@ -212,18 +215,21 @@ router.post('/actas/:id/items/:itemId/analizar', requireInspector, validarBody(e
     let fotosGuardadas = item.fotos;
 
     if (fotosGuardadas.length === 0) {
-      fotosGuardadas = await Promise.all(
-        fotos.map((f, idx) => fotosDb.crear({ itemId, url: f.url, publicId: f.publicId, orden: idx }))
-      );
+
+      fotosGuardadas = await ejecutarEnTransaccion(async (conn) => {
+        const guardadas = [];
+        for (const [idx, f] of fotos.entries()) {
+          guardadas.push(await fotosDb.crear({ itemId, url: f.url, publicId: f.publicId, orden: idx }, conn));
+        }
+        return guardadas;
+      });
     }
 
     const marcadoAnalizando = await itemsDb.actualizar(itemId, empresaId, { estado: 'analizando' });
 
     colaAnalisis.encolar(async () => {
       try {
-        // Las URLs firmadas guardadas son las que se le pasan a la IA, no las
-        // del body: asi la IA siempre lee la misma foto que quedo persistida,
-        // aunque el body traiga una firma con TTL distinto.
+
         const resultado = await consumoIaService.conRegistro(
           { empresaId, itemId, numFotos: fotosGuardadas.length },
           () => analizarProducto(fotosGuardadas.map((f) => f.url))
@@ -258,18 +264,15 @@ router.post('/actas/:id/items/:itemId/analizar', requireInspector, validarBody(e
   }
 });
 
-// Generar mientras el acta sigue 'en_curso' es diligenciarla (el admin no lo
-// hace); volver a descargar el Excel de un acta ya 'generada' es una simple
-// consulta del documento, y esa sí se permite a cualquier rol.
+
 router.post('/actas/:id/generar', async (req, res) => {
   try {
     const { empresaId } = req.auth;
     const acta = await actasDb.obtenerPorId(req.params.id, empresaId);
     if (!acta) return res.status(404).json(NO_ENCONTRADA);
 
-    if (acta.estado === 'en_curso' && req.auth.rol === 'admin') {
-      return res.status(403).json({ error: 'Los administradores no diligencian actas. Usa una cuenta de inspector.' });
-    }
+    const motivoBloqueo = bloquearAdminSiEnCurso(acta, req.auth.rol);
+    if (motivoBloqueo) return res.status(403).json({ error: motivoBloqueo });
 
     const empresa = await empresasDb.obtenerPorId(empresaId);
     const fuentePlantilla = await plantillaService.resolverParaEmpresa(empresa);
@@ -277,8 +280,7 @@ router.post('/actas/:id/generar', async (req, res) => {
     const nombreArchivo = `acta_${acta.doNo || 'sin_do'}.xlsx`;
     await actasDb.marcarGenerada(acta.id, empresaId, nombreArchivo);
 
-    // El evento mas relevante para una auditoria en aduanas: quien genero el
-    // documento oficial, y con que datos de despacho (do_no) en ese momento.
+
     await auditoriaService.registrar({
       empresaId,
       usuarioId: req.auth.userId,

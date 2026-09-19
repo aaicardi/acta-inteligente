@@ -1,12 +1,9 @@
 const pool = require('./pool');
 const items = require('./items');
 const fotos = require('./fotos');
+const { ejecutarEnTransaccion } = require('./transaccion');
 
-// REGLA DE AISLAMIENTO: ninguna función de esta capa acepta un id sin recibir
-// también el empresaId, y toda consulta lo lleva en el WHERE. El filtro no se
-// aplica en las rutas: vive aquí, en un solo lugar, para que sea auditable de
-// un vistazo. Un recurso de otra empresa devuelve null (la ruta responde 404),
-// nunca 403: no se confirma la existencia de recursos ajenos.
+
 function aCamelCase(fila) {
   return {
     id: fila.id,
@@ -30,8 +27,7 @@ function aCamelCase(fila) {
   };
 }
 
-// Prellena ciudad/deposito con los de la ultima acta generada de la empresa,
-// igual que antes lo hacia `ultimosValores` en IndexedDB (ver App.jsx historico).
+
 async function obtenerUltimaGenerada(empresaId) {
   const [filas] = await pool.query(
     "SELECT ciudad, deposito FROM actas WHERE empresa_id = ? AND estado = 'generada' ORDER BY generada_en DESC LIMIT 1",
@@ -64,8 +60,7 @@ async function obtenerPorId(id, empresaId) {
   return acta;
 }
 
-// El acta en curso es por usuario, no global: dos inspectores de la misma
-// empresa trabajan en paralelo sin robarse el acta.
+
 async function obtenerEnCurso(empresaId, usuarioId) {
   const [filas] = await pool.query(
     "SELECT id FROM actas WHERE empresa_id = ? AND creada_por = ? AND estado = 'en_curso' ORDER BY creada_en DESC LIMIT 1",
@@ -146,14 +141,15 @@ async function marcarGenerada(id, empresaId, nombreArchivo) {
   return obtenerPorId(id, empresaId);
 }
 
-// Recolecta los public_id de Cloudinary de TODAS las fotos del acta antes de
-// borrarla, para que la ruta pueda destruirlas en Cloudinary (el CASCADE de
-// MySQL limpia las filas, pero no sabe nada de Cloudinary).
+
 async function eliminar(id, empresaId) {
   const acta = await obtenerPorId(id, empresaId);
   if (!acta) return null;
   const todasLasFotos = acta.items.flatMap((item) => item.fotos);
-  await pool.query('DELETE FROM actas WHERE id = ? AND empresa_id = ?', [id, empresaId]); // cascade limpia items + fotos
+
+  await ejecutarEnTransaccion((conn) =>
+    conn.query('DELETE FROM actas WHERE id = ? AND empresa_id = ?', [id, empresaId])
+  );
   return todasLasFotos;
 }
 

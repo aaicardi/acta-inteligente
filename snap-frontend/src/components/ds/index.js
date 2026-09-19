@@ -12,3 +12,4 @@ export { default as ResumenActa } from './ResumenActa';
 export { default as Campo } from './Campo';
 export { default as CampoCantidad } from './CampoCantidad';
 export { default as TabBar } from './TabBar';
+export { default as AppShell } from './AppShell';

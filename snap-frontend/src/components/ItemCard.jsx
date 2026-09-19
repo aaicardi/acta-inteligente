@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { EstadoBadge, Velo, Skeleton, CampoCantidad } from './ds';
 
 // Capa de sistema (analizando / en_cola) vs capa de persona (listo / revisar):
 // nunca se muestran a la vez — ver Acta Inteligente v2, componente ItemCard.
 const SISTEMA = { analizando: 'analizando', en_cola: 'cola' };
 
-export default function ItemCard({ item, onActualizar, onAbrir }) {
+// memo: el polling de esperarAnalisis (cada 2s mientras algun item esta
+// 'analizando') actualiza la cache de React Query, y sin memo eso
+// re-renderizaba TODOS los ItemCard del acta, no solo el que cambio.
+function ItemCard({ item, onActualizar, onAbrir }) {
   const [thumbUrl, setThumbUrl] = useState(null);
 
   useEffect(() => {
@@ -130,3 +133,5 @@ export default function ItemCard({ item, onActualizar, onAbrir }) {
     </div>
   );
 }
+
+export default memo(ItemCard);

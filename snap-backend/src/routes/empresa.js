@@ -8,34 +8,30 @@ const plantillaService = require('../services/plantillaService');
 const excelService = require('../services/excelService');
 const auditoriaService = require('../services/auditoriaService');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { crearManejadorError } = require('../middleware/manejarError');
 const logger = require('../services/logger');
 
 const router = express.Router();
 
-// En memoria (no disco): el archivo es chico (una plantilla .xlsx, no fotos)
-// y se valida y reenvia a Cloudinary en el mismo request, sin necesidad de
-// persistir un temporal.
+const manejarError = crearManejadorError();
+
+
 const subidaPlantilla = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB: de sobra para un .xlsx de plantilla
+  limits: { fileSize: 5 * 1024 * 1024 }, 
 });
 
-// Rutas administrativas sobre la empresa propia del admin logueado (consumo
-// de IA hoy; plantilla de acta mas adelante, ver 3.5 del spec). Distinto de
-// /usuarios porque no es CRUD de usuarios, es configuracion/estado de la
-// empresa como unidad.
+
 router.use('/empresa', requireAuth, requireAdmin);
 
-// Solo lectura: registra consumo (services/consumoIaService.js) pero no
-// bloquea ni limita a nadie todavia — ver decision de producto en el spec.
+
 router.get('/empresa/consumo-ia', async (req, res) => {
   try {
     const { desde } = req.query;
     const resumen = await consumoIaDb.resumenPorEmpresa(req.auth.empresaId, { desde });
     return res.json(resumen);
   } catch (err) {
-    logger.error('No se pudo consultar el consumo de IA', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo consultar el consumo de IA.' });
+    return manejarError(req, res, err, 'No se pudo consultar el consumo de IA.');
   }
 });
 
@@ -48,8 +44,7 @@ router.get('/empresa/auditoria', async (req, res) => {
     });
     return res.json(eventos);
   } catch (err) {
-    logger.error('No se pudo consultar la auditoría', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo consultar la auditoría.' });
+    return manejarError(req, res, err, 'No se pudo consultar la auditoría.');
   }
 });
 
@@ -58,15 +53,11 @@ router.get('/empresa/plantilla', async (req, res) => {
     const empresa = await empresasDb.obtenerPorId(req.auth.empresaId);
     return res.json({ personalizada: !!empresa.plantillaPublicId });
   } catch (err) {
-    logger.error('No se pudo consultar la plantilla', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo consultar la plantilla.' });
+    return manejarError(req, res, err, 'No se pudo consultar la plantilla.');
   }
 });
 
-// La plantilla subida DEBE conservar el mismo esqueleto de filas que la
-// plantilla original (ver excelService.js): solo puede cambiar textos fijos,
-// logo, colores. Se valida antes de subir a Cloudinary, para no gastar esa
-// subida con un archivo que de todas formas se va a rechazar.
+
 router.post('/empresa/plantilla', subidaPlantilla.single('archivo'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Se requiere el archivo de la plantilla (.xlsx).' });
@@ -81,16 +72,16 @@ router.post('/empresa/plantilla', subidaPlantilla.single('archivo'), async (req,
     const { empresaId } = req.auth;
     const empresa = await empresasDb.obtenerPorId(empresaId);
 
-    // Si ya habia una plantilla propia, se reemplaza: se borra la anterior
-    // despues de que la nueva quedo guardada, no antes (para no perder la
-    // vieja si la subida nueva fallara a mitad).
+
     const plantillaAnterior = empresa.plantillaPublicId;
     const { publicId } = await cloudinaryService.subirPlantilla(req.file.buffer, empresa.slug);
     await empresasDb.actualizarPlantilla(empresaId, publicId);
     plantillaService.invalidar(empresaId);
 
     if (plantillaAnterior) {
-      await cloudinaryService.eliminarPlantilla(plantillaAnterior).catch(() => {});
+      await cloudinaryService.eliminarPlantilla(plantillaAnterior).catch((err) =>
+        logger.warn('No se pudo eliminar la plantilla anterior en Cloudinary', { publicId: plantillaAnterior, error: err.message })
+      );
     }
 
     await auditoriaService.registrar({
@@ -103,12 +94,11 @@ router.post('/empresa/plantilla', subidaPlantilla.single('archivo'), async (req,
 
     return res.status(201).json({ personalizada: true });
   } catch (err) {
-    logger.error('No se pudo subir la plantilla', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo subir la plantilla.' });
+    return manejarError(req, res, err, 'No se pudo subir la plantilla.');
   }
 });
 
-// Vuelve a la plantilla por defecto.
+
 router.delete('/empresa/plantilla', async (req, res) => {
   try {
     const { empresaId } = req.auth;
@@ -118,7 +108,9 @@ router.delete('/empresa/plantilla', async (req, res) => {
     const publicIdAnterior = empresa.plantillaPublicId;
     await empresasDb.actualizarPlantilla(empresaId, null);
     plantillaService.invalidar(empresaId);
-    await cloudinaryService.eliminarPlantilla(publicIdAnterior).catch(() => {});
+    await cloudinaryService.eliminarPlantilla(publicIdAnterior).catch((err) =>
+      logger.warn('No se pudo eliminar la plantilla en Cloudinary', { publicId: publicIdAnterior, error: err.message })
+    );
 
     await auditoriaService.registrar({
       empresaId,
@@ -130,8 +122,7 @@ router.delete('/empresa/plantilla', async (req, res) => {
 
     return res.status(204).send();
   } catch (err) {
-    logger.error('No se pudo restaurar la plantilla', err, { empresaId: req.auth.empresaId });
-    return res.status(500).json({ error: 'No se pudo restaurar la plantilla.' });
+    return manejarError(req, res, err, 'No se pudo restaurar la plantilla.');
   }
 });
 

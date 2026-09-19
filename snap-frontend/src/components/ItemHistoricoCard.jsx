@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import GaleriaFotos from './GaleriaFotos';
 import { EstadoBadge } from './ds';
 
@@ -39,7 +39,7 @@ function Dato({ etiqueta, valor }) {
   );
 }
 
-export default function ItemHistoricoCard({ item }) {
+function ItemHistoricoCard({ item }) {
   const [indiceGaleria, setIndiceGaleria] = useState(null);
   const fotos = (item.fotos || []).filter((f) => f.url);
   const urls = fotos.map((f) => f.url);
@@ -229,3 +229,5 @@ export default function ItemHistoricoCard({ item }) {
     </div>
   );
 }
+
+export default memo(ItemHistoricoCard);

@@ -28,8 +28,7 @@ services:
     env_file:
       - ./snap-backend/.env
     environment:
-      # Sobreescriben el .env: en compose la base es el contenedor local,
-      # no la gestionada en la nube (que si exige TLS).
+
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USER: acta_app
