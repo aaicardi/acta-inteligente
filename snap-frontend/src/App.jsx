@@ -9,7 +9,7 @@ import HistoricoDetalle from './components/HistoricoDetalle';
 import Login from './components/Login';
 import AdminPanel from './components/AdminPanel';
 import ModalCuenta from './components/ModalCuenta';
-import { AppHeader, ColaChip, BarraExcepcion, AvisoIA, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar } from './components/ds';
+import { AppHeader, ColaChip, BarraExcepcion, AvisoIA, Boton, Tarjeta, ResumenActa, Sello, CampoCantidad, TabBar, AppShell } from './components/ds';
 import * as api from './lib/api';
 import { useActaEnCurso } from './hooks/useActaEnCurso';
 import { useHistorico, useActaDetalle } from './hooks/useHistorico';
@@ -272,7 +272,7 @@ export default function App() {
     );
   } else if (pantalla === 'inicio') {
     contenido = (
-      <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+      <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />}>
         <div
           style={{
             flex: 1,
@@ -299,15 +299,14 @@ export default function App() {
             </Boton>
           </div>
         </div>
-        <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />
-      </div>
+      </AppShell>
     );
   } else if (pantalla === 'cierre') {
     const pendientesSistema = items.filter((it) => it.estado === 'analizando' || it.estado === 'en_cola').length;
     const itemsCierre = ordenarPorNumero(items.filter((it) => it.estado !== 'analizando' && it.estado !== 'en_cola'));
     const faltantes = itemsCierre.filter(sinCantidad).length;
     contenido = (
-      <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+      <AppShell>
         <AppHeader
           titulo={faltantes ? (faltantes === 1 ? 'Falta 1 cantidad' : `Faltan ${faltantes} cantidades`) : 'Cierre del acta'}
           meta={`D.O. ${encabezado.doNo || '—'}`}
@@ -397,11 +396,12 @@ export default function App() {
             Volver a la captura
           </Boton>
         </div>
-      </div>
+      </AppShell>
     );
   } else if (pantalla === 'exito' && resumenGenerado) {
     contenido = (
       <div
+        className="mx-auto w-full lg:max-w-[480px]"
         style={{
           position: 'fixed',
           inset: 0,
@@ -441,7 +441,7 @@ export default function App() {
     const numerosUsados = items.map((it) => it.orden);
 
     contenido = (
-    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+    <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />}>
       <AppHeader
         titulo="Acta en curso"
         meta={`D.O. ${encabezado.doNo || '—'} · ${items.length} ítem${items.length === 1 ? '' : 's'}`}
@@ -525,9 +525,7 @@ export default function App() {
           Los datos los propone una herramienta de IA y puede cometer errores. Revísalos antes de generar el acta.
         </p>
       </div>
-
-      <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />
-    </div>
+    </AppShell>
     );
   }
 

@@ -1,17 +1,16 @@
-import { AppHeader, Tarjeta, Campo, ResumenActa, Boton } from './ds';
+import { AppHeader, Tarjeta, Campo, ResumenActa, Boton, AppShell } from './ds';
 import ItemHistoricoCard from './ItemHistoricoCard';
 import { formatearFecha } from '../lib/formato';
 
 export default function HistoricoDetalle({ acta, cargando, error, descargando, onVolver, onDescargar, tabBar }) {
   if (cargando || !acta) {
     return (
-      <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+      <AppShell tabBar={tabBar}>
         <AppHeader titulo="Acta" />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--t-14)', color: 'var(--grafito)' }}>
           {error || 'Cargando…'}
         </div>
-        {tabBar}
-      </div>
+      </AppShell>
     );
   }
 
@@ -19,7 +18,7 @@ export default function HistoricoDetalle({ acta, cargando, error, descargando, o
   const generada = acta.estado === 'generada';
 
   return (
-    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+    <AppShell tabBar={tabBar}>
       <AppHeader titulo={acta.cliente || 'Sin cliente'} meta={`D.O. ${acta.doNo || '—'} · ${formatearFecha(acta.fecha)}`} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
@@ -45,7 +44,7 @@ export default function HistoricoDetalle({ acta, cargando, error, descargando, o
         </div>
 
         <Tarjeta etiqueta="Datos de la inspección">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="grid grid-cols-2 lg:grid-cols-4" style={{ gap: '10px' }}>
             <Campo etiqueta="D.O. No" valor={acta.doNo} mono vacio={!acta.doNo} />
             <Campo etiqueta="Doc. transporte" valor={acta.documentoTransporte} mono vacio={!acta.documentoTransporte} />
             <Campo etiqueta="Depósito" valor={acta.deposito} vacio={!acta.deposito} />
@@ -69,7 +68,7 @@ export default function HistoricoDetalle({ acta, cargando, error, descargando, o
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 'var(--s4)' }}>
           {acta.items.length === 0 ? (
             <p style={{ fontSize: 'var(--t-14)', color: 'var(--grafito)' }}>Esta acta no tiene productos registrados.</p>
           ) : (
@@ -83,7 +82,6 @@ export default function HistoricoDetalle({ acta, cargando, error, descargando, o
           {descargando ? 'Descargando…' : 'Descargar Excel'}
         </Boton>
       </div>
-      {tabBar}
-    </div>
+    </AppShell>
   );
 }

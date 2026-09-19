@@ -230,7 +230,7 @@ export default function AdminPanel({ onCerrar }) {
   const [tab, setTab] = useState('usuarios');
 
   return (
-    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)', zIndex: 40 }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--bond)', zIndex: 40 }}>
       <AppHeader
         titulo="Administración"
         chip={
@@ -284,10 +284,12 @@ export default function AdminPanel({ onCerrar }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)' }}>
-        {tab === 'usuarios' && <SeccionUsuarios />}
-        {tab === 'consumo' && <SeccionConsumo />}
-        {tab === 'plantilla' && <SeccionPlantilla />}
-        {tab === 'auditoria' && <SeccionAuditoria />}
+        <div className="mx-auto w-full lg:max-w-[720px]">
+          {tab === 'usuarios' && <SeccionUsuarios />}
+          {tab === 'consumo' && <SeccionConsumo />}
+          {tab === 'plantilla' && <SeccionPlantilla />}
+          {tab === 'auditoria' && <SeccionAuditoria />}
+        </div>
       </div>
     </div>
   );

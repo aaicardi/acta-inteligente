@@ -1,9 +1,9 @@
-import { AppHeader, Tarjeta, EstadoBadge } from './ds';
+import { AppHeader, Tarjeta, EstadoBadge, AppShell } from './ds';
 import { formatearFecha } from '../lib/formato';
 
 export default function Historico({ actas, cargando, error, busqueda, onBusqueda, onAbrir, tabBar }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', background: 'var(--bond)' }}>
+    <AppShell tabBar={tabBar}>
       <AppHeader titulo="Mis actas" meta={`${actas.length} acta${actas.length === 1 ? '' : 's'}`} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
@@ -45,7 +45,7 @@ export default function Historico({ actas, cargando, error, busqueda, onBusqueda
             No hay actas guardadas todavía.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--s2)' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3" style={{ gap: 'var(--s2)' }}>
             {actas.map((acta) => (
               <div key={acta.id} onClick={() => onAbrir(acta.id)} style={{ cursor: 'pointer' }}>
                 <Tarjeta style={{ padding: 'var(--s3)' }}>
@@ -69,7 +69,6 @@ export default function Historico({ actas, cargando, error, busqueda, onBusqueda
           </div>
         )}
       </div>
-      {tabBar}
-    </div>
+    </AppShell>
   );
 }
