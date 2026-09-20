@@ -1,10 +1,10 @@
 import { AppHeader, Tarjeta, EstadoBadge, AppShell } from './ds';
 import { formatearFecha } from '../lib/formato';
 
-export default function Historico({ actas, cargando, error, busqueda, onBusqueda, onAbrir, tabBar }) {
+export default function Historico({ actas, total = actas.length, pagina = 1, totalPaginas = 1, onPagina, cargando, error, busqueda, onBusqueda, onAbrir, tabBar, esAdmin, inspectores = [], inspectorId = '', onInspectorId }) {
   return (
     <AppShell tabBar={tabBar}>
-      <AppHeader titulo="Mis actas" meta={`${actas.length} acta${actas.length === 1 ? '' : 's'}`} />
+      <AppHeader titulo="Mis actas" meta={`${total} acta${total === 1 ? '' : 's'}`} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
         <input
@@ -24,6 +24,30 @@ export default function Historico({ actas, cargando, error, busqueda, onBusqueda
             color: 'var(--tinta)',
           }}
         />
+
+        {esAdmin && inspectores.length > 0 && (
+          <select
+            value={inspectorId}
+            onChange={(e) => onInspectorId(e.target.value)}
+            aria-label="Filtrar por inspector"
+            style={{
+              width: '100%',
+              minHeight: '52px',
+              background: '#fff',
+              border: 'var(--bd) solid var(--linea)',
+              borderRadius: 'var(--r)',
+              padding: '0 var(--s3)',
+              fontFamily: 'var(--sans)',
+              fontSize: 'var(--t-15)',
+              color: 'var(--tinta)',
+            }}
+          >
+            <option value="">Todos los inspectores</option>
+            {inspectores.map((u) => (
+              <option key={u.id} value={u.id}>{u.nombre || u.email}</option>
+            ))}
+          </select>
+        )}
 
         {error && (
           <p style={{ borderRadius: 'var(--r)', background: 'var(--falta-bg)', padding: '10px var(--s3)', fontSize: 'var(--t-14)', color: 'var(--falta)' }}>{error}</p>
@@ -60,12 +84,55 @@ export default function Historico({ actas, cargando, error, busqueda, onBusqueda
                       <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', letterSpacing: 'var(--track-dato)', color: 'var(--grafito)', marginTop: '3px' }}>
                         {formatearFecha(acta.fecha)} · D.O. {acta.doNo || '—'} · {acta.totalItems} ítems · {acta.totalFotos} fotos
                       </div>
+                      <div style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', letterSpacing: 'var(--track-dato)', color: 'var(--grafito)', marginTop: '2px' }}>
+                        Inspector: {acta.creadaPorNombre || '—'}
+                      </div>
                     </div>
                     <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-14)', color: 'var(--boli)', flexShrink: 0 }} aria-hidden="true">→</span>
                   </div>
                 </Tarjeta>
               </div>
             ))}
+          </div>
+        )}
+
+        {!cargando && totalPaginas > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s3)', padding: 'var(--s2) 0' }}>
+            <button
+              type="button"
+              onClick={() => onPagina(pagina - 1)}
+              disabled={pagina <= 1}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-13)',
+                color: pagina <= 1 ? 'var(--grafito)' : 'var(--boli)',
+                background: 'none',
+                border: 'none',
+                cursor: pagina <= 1 ? 'default' : 'pointer',
+                padding: '6px 10px',
+              }}
+            >
+              ← Anterior
+            </button>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', color: 'var(--grafito)' }}>
+              Página {pagina} de {totalPaginas}
+            </span>
+            <button
+              type="button"
+              onClick={() => onPagina(pagina + 1)}
+              disabled={pagina >= totalPaginas}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-13)',
+                color: pagina >= totalPaginas ? 'var(--grafito)' : 'var(--boli)',
+                background: 'none',
+                border: 'none',
+                cursor: pagina >= totalPaginas ? 'default' : 'pointer',
+                padding: '6px 10px',
+              }}
+            >
+              Siguiente →
+            </button>
           </div>
         )}
       </div>

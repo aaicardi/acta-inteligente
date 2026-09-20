@@ -9,6 +9,7 @@ function aCamelCase(fila) {
     id: fila.id,
     empresaId: fila.empresa_id,
     creadaPor: fila.creada_por,
+    creadaPorNombre: fila.creada_por_nombre,
     estado: fila.estado,
     doNo: fila.do_no,
     cliente: fila.cliente,
@@ -52,8 +53,20 @@ async function crear(empresaId, usuarioId) {
   return obtenerPorId(res.insertId, empresaId);
 }
 
-async function obtenerPorId(id, empresaId) {
-  const [filas] = await pool.query('SELECT * FROM actas WHERE id = ? AND empresa_id = ?', [id, empresaId]);
+async function obtenerPorId(id, empresaId, creadaPor) {
+  const condiciones = ['a.id = ?', 'a.empresa_id = ?'];
+  const valores = [id, empresaId];
+  if (creadaPor) {
+    condiciones.push('a.creada_por = ?');
+    valores.push(creadaPor);
+  }
+  const [filas] = await pool.query(
+    `SELECT a.*, u.nombre AS creada_por_nombre
+     FROM actas a
+     LEFT JOIN usuarios u ON u.id = a.creada_por
+     WHERE ${condiciones.join(' AND ')}`,
+    valores
+  );
   if (filas.length === 0) return null;
   const acta = aCamelCase(filas[0]);
   acta.items = await items.listarPorActa(id);
@@ -70,35 +83,60 @@ async function obtenerEnCurso(empresaId, usuarioId) {
   return obtenerPorId(filas[0].id, empresaId);
 }
 
-async function listar(empresaId, { q, estado } = {}) {
+const LIMITE_POR_DEFECTO = 20;
+const LIMITE_MAXIMO = 50;
+
+async function listar(empresaId, { q, estado, creadaPor, pagina = 1, limite = LIMITE_POR_DEFECTO } = {}) {
   const condiciones = ['a.empresa_id = ?'];
   const valores = [empresaId];
   if (estado) {
     condiciones.push('a.estado = ?');
     valores.push(estado);
   }
+  if (creadaPor) {
+    condiciones.push('a.creada_por = ?');
+    valores.push(creadaPor);
+  }
   if (q) {
     condiciones.push('(a.do_no LIKE ? OR a.cliente LIKE ?)');
     valores.push(`%${q}%`, `%${q}%`);
   }
   const where = `WHERE ${condiciones.join(' AND ')}`;
+
+  const paginaSegura = Math.max(1, Number(pagina) || 1);
+  const limiteSeguro = Math.min(LIMITE_MAXIMO, Math.max(1, Number(limite) || LIMITE_POR_DEFECTO));
+  const offset = (paginaSegura - 1) * limiteSeguro;
+
+  const [[{ total }]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM actas a ${where}`,
+    valores
+  );
+
   const [filas] = await pool.query(
-    `SELECT a.*,
+    `SELECT a.*, u.nombre AS creada_por_nombre,
             COUNT(DISTINCT i.id) AS total_items,
             COUNT(DISTINCT f.id) AS total_fotos
      FROM actas a
+     LEFT JOIN usuarios u ON u.id = a.creada_por
      LEFT JOIN items i ON i.acta_id = a.id
      LEFT JOIN fotos f ON f.item_id = i.id
      ${where}
      GROUP BY a.id
-     ORDER BY a.creada_en DESC`,
-    valores
+     ORDER BY a.creada_en DESC
+     LIMIT ? OFFSET ?`,
+    [...valores, limiteSeguro, offset]
   );
-  return filas.map((fila) => ({
-    ...aCamelCase(fila),
-    totalItems: Number(fila.total_items),
-    totalFotos: Number(fila.total_fotos),
-  }));
+
+  return {
+    actas: filas.map((fila) => ({
+      ...aCamelCase(fila),
+      totalItems: Number(fila.total_items),
+      totalFotos: Number(fila.total_fotos),
+    })),
+    total: Number(total),
+    pagina: paginaSegura,
+    totalPaginas: Math.max(1, Math.ceil(Number(total) / limiteSeguro)),
+  };
 }
 
 const CAMPOS_ACTUALIZABLES = {
@@ -115,7 +153,7 @@ const CAMPOS_ACTUALIZABLES = {
   observaciones: 'observaciones',
 };
 
-async function actualizarEncabezado(id, empresaId, cambios) {
+async function actualizarEncabezado(id, empresaId, cambios, creadaPor) {
   const columnas = [];
   const valores = [];
   for (const [campo, valor] of Object.entries(cambios)) {
@@ -124,13 +162,18 @@ async function actualizarEncabezado(id, empresaId, cambios) {
     columnas.push(`${columna} = ?`);
     valores.push(valor === '' && campo === 'fecha' ? null : valor);
   }
-  if (columnas.length === 0) return obtenerPorId(id, empresaId);
+  if (columnas.length === 0) return obtenerPorId(id, empresaId, creadaPor);
+  const condiciones = ['id = ?', 'empresa_id = ?'];
   valores.push(id, empresaId);
+  if (creadaPor) {
+    condiciones.push('creada_por = ?');
+    valores.push(creadaPor);
+  }
   await pool.query(
-    `UPDATE actas SET ${columnas.join(', ')} WHERE id = ? AND empresa_id = ?`,
+    `UPDATE actas SET ${columnas.join(', ')} WHERE ${condiciones.join(' AND ')}`,
     valores
   );
-  return obtenerPorId(id, empresaId);
+  return obtenerPorId(id, empresaId, creadaPor);
 }
 
 async function marcarGenerada(id, empresaId, nombreArchivo) {
@@ -142,8 +185,8 @@ async function marcarGenerada(id, empresaId, nombreArchivo) {
 }
 
 
-async function eliminar(id, empresaId) {
-  const acta = await obtenerPorId(id, empresaId);
+async function eliminar(id, empresaId, creadaPor) {
+  const acta = await obtenerPorId(id, empresaId, creadaPor);
   if (!acta) return null;
   const todasLasFotos = acta.items.flatMap((item) => item.fotos);
 

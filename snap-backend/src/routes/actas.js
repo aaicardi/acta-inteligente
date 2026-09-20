@@ -55,11 +55,22 @@ router.get('/actas/en-curso', async (req, res) => {
   }
 });
 
+function creadaPorPermitida(req) {
+  if (req.auth.rol === 'admin') return req.query.creadaPor || undefined;
+  return req.auth.userId;
+}
+
 router.get('/actas', async (req, res) => {
   try {
-    const { q, estado } = req.query;
-    const actas = await actasDb.listar(req.auth.empresaId, { q, estado });
-    return res.json(actas);
+    const { q, estado, pagina, limite } = req.query;
+    const resultado = await actasDb.listar(req.auth.empresaId, {
+      q,
+      estado,
+      creadaPor: creadaPorPermitida(req),
+      pagina,
+      limite,
+    });
+    return res.json(resultado);
   } catch (err) {
     return manejarError(req, res, err, 'No se pudo listar el histórico de actas.');
   }
@@ -67,7 +78,7 @@ router.get('/actas', async (req, res) => {
 
 router.get('/actas/:id', async (req, res) => {
   try {
-    const acta = await actasDb.obtenerPorId(req.params.id, req.auth.empresaId);
+    const acta = await actasDb.obtenerPorId(req.params.id, req.auth.empresaId, creadaPorPermitida(req));
     if (!acta) return res.status(404).json(NO_ENCONTRADA);
     return res.json(acta);
   } catch (err) {
@@ -78,7 +89,7 @@ router.get('/actas/:id', async (req, res) => {
 
 router.get('/actas/:id/items/:itemId/estado', async (req, res) => {
   try {
-    const item = await itemsDb.obtenerPorId(req.params.itemId, req.auth.empresaId);
+    const item = await itemsDb.obtenerPorId(req.params.itemId, req.auth.empresaId, creadaPorPermitida(req));
     if (!item || item.actaId !== Number(req.params.id)) return res.status(404).json(ITEM_NO_ENCONTRADO);
     return res.json(item);
   } catch (err) {
@@ -88,7 +99,7 @@ router.get('/actas/:id/items/:itemId/estado', async (req, res) => {
 
 router.patch('/actas/:id', requireInspector, validarBody(esquemas.actualizarEncabezado), async (req, res) => {
   try {
-    const acta = await actasDb.actualizarEncabezado(req.params.id, req.auth.empresaId, req.body);
+    const acta = await actasDb.actualizarEncabezado(req.params.id, req.auth.empresaId, req.body, creadaPorPermitida(req));
     if (!acta) return res.status(404).json(NO_ENCONTRADA);
     return res.json(acta);
   } catch (err) {
@@ -98,7 +109,7 @@ router.patch('/actas/:id', requireInspector, validarBody(esquemas.actualizarEnca
 
 router.delete('/actas/:id', requireInspector, async (req, res) => {
   try {
-    const fotos = await actasDb.eliminar(req.params.id, req.auth.empresaId);
+    const fotos = await actasDb.eliminar(req.params.id, req.auth.empresaId, creadaPorPermitida(req));
     if (fotos === null) return res.status(404).json(NO_ENCONTRADA);
     await borrarFotosEnCloudinary(fotos);
     await auditoriaService.registrar({
@@ -117,7 +128,7 @@ router.delete('/actas/:id', requireInspector, async (req, res) => {
 router.post('/actas/:id/items', requireInspector, validarBody(esquemas.crearItem), async (req, res) => {
   try {
     const { orden } = req.body;
-    const item = await itemsDb.crear(req.params.id, req.auth.empresaId, { orden });
+    const item = await itemsDb.crear(req.params.id, req.auth.empresaId, { orden }, creadaPorPermitida(req));
     if (!item) return res.status(404).json(NO_ENCONTRADA);
     return res.status(201).json(item);
   } catch (err) {
@@ -127,7 +138,7 @@ router.post('/actas/:id/items', requireInspector, validarBody(esquemas.crearItem
 
 router.patch('/actas/:id/items/:itemId', requireInspector, validarBody(esquemas.actualizarItem), async (req, res) => {
   try {
-    const item = await itemsDb.actualizar(req.params.itemId, req.auth.empresaId, req.body);
+    const item = await itemsDb.actualizar(req.params.itemId, req.auth.empresaId, req.body, creadaPorPermitida(req));
     if (!item) return res.status(404).json(ITEM_NO_ENCONTRADO);
     return res.json(item);
   } catch (err) {
@@ -138,7 +149,7 @@ router.patch('/actas/:id/items/:itemId', requireInspector, validarBody(esquemas.
 router.patch('/actas/:id/items/:itemId/orden', requireInspector, validarBody(esquemas.actualizarOrdenItem), async (req, res) => {
   try {
     const { orden } = req.body;
-    const item = await itemsDb.actualizarOrden(req.params.itemId, req.auth.empresaId, orden);
+    const item = await itemsDb.actualizarOrden(req.params.itemId, req.auth.empresaId, orden, creadaPorPermitida(req));
     if (!item) return res.status(404).json(ITEM_NO_ENCONTRADO);
     return res.json(item);
   } catch (err) {
@@ -148,7 +159,7 @@ router.patch('/actas/:id/items/:itemId/orden', requireInspector, validarBody(esq
 
 router.delete('/actas/:id/items/:itemId', requireInspector, async (req, res) => {
   try {
-    const fotos = await itemsDb.eliminar(req.params.itemId, req.auth.empresaId);
+    const fotos = await itemsDb.eliminar(req.params.itemId, req.auth.empresaId, creadaPorPermitida(req));
     if (fotos === null) return res.status(404).json(ITEM_NO_ENCONTRADO);
     await borrarFotosEnCloudinary(fotos);
     await auditoriaService.registrar({
@@ -169,7 +180,7 @@ router.delete('/actas/:id/items/:itemId', requireInspector, async (req, res) => 
 router.post('/actas/:id/items/:itemId/firma-subida', requireInspector, async (req, res) => {
   try {
     const { empresaId } = req.auth;
-    const item = await itemsDb.obtenerPorId(req.params.itemId, empresaId);
+    const item = await itemsDb.obtenerPorId(req.params.itemId, empresaId, creadaPorPermitida(req));
     if (!item) return res.status(404).json(ITEM_NO_ENCONTRADO);
 
     const empresa = await empresasDb.obtenerPorId(empresaId);
@@ -209,7 +220,7 @@ router.post('/actas/:id/items/:itemId/analizar', requireInspector, validarBody(e
   try {
     validarFotos(fotos.map((f) => f.url));
 
-    const item = await itemsDb.obtenerPorId(itemId, empresaId);
+    const item = await itemsDb.obtenerPorId(itemId, empresaId, creadaPorPermitida(req));
     if (!item) return res.status(404).json(ITEM_NO_ENCONTRADO);
 
     let fotosGuardadas = item.fotos;
@@ -268,7 +279,7 @@ router.post('/actas/:id/items/:itemId/analizar', requireInspector, validarBody(e
 router.post('/actas/:id/generar', async (req, res) => {
   try {
     const { empresaId } = req.auth;
-    const acta = await actasDb.obtenerPorId(req.params.id, empresaId);
+    const acta = await actasDb.obtenerPorId(req.params.id, empresaId, creadaPorPermitida(req));
     if (!acta) return res.status(404).json(NO_ENCONTRADA);
 
     const motivoBloqueo = bloquearAdminSiEnCurso(acta, req.auth.rol);

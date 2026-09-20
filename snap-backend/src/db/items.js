@@ -31,11 +31,14 @@ function relanzarSiDuplicado(err, orden) {
   throw err;
 }
 
-// items y fotos no tienen empresa_id propio: heredan de actas, así que el
-// aislamiento va por JOIN. Un item de otra empresa se comporta como
-// inexistente (null), igual que en la capa de actas.
-async function crear(actaId, empresaId, { orden }) {
-  const [actas] = await pool.query('SELECT id FROM actas WHERE id = ? AND empresa_id = ?', [actaId, empresaId]);
+async function crear(actaId, empresaId, { orden }, creadaPor) {
+  const condiciones = ['id = ?', 'empresa_id = ?'];
+  const valores = [actaId, empresaId];
+  if (creadaPor) {
+    condiciones.push('creada_por = ?');
+    valores.push(creadaPor);
+  }
+  const [actas] = await pool.query(`SELECT id FROM actas WHERE ${condiciones.join(' AND ')}`, valores);
   if (actas.length === 0) return null;
 
   try {
@@ -50,12 +53,18 @@ async function crear(actaId, empresaId, { orden }) {
   }
 }
 
-async function obtenerPorId(id, empresaId) {
+async function obtenerPorId(id, empresaId, creadaPor) {
+  const condiciones = ['i.id = ?', 'a.empresa_id = ?'];
+  const valores = [id, empresaId];
+  if (creadaPor) {
+    condiciones.push('a.creada_por = ?');
+    valores.push(creadaPor);
+  }
   const [filas] = await pool.query(
     `SELECT i.* FROM items i
      JOIN actas a ON a.id = i.acta_id
-     WHERE i.id = ? AND a.empresa_id = ?`,
-    [id, empresaId]
+     WHERE ${condiciones.join(' AND ')}`,
+    valores
   );
   if (filas.length === 0) return null;
   const item = aCamelCase(filas[0]);
@@ -90,12 +99,16 @@ const CAMPOS_ACTUALIZABLES = {
   estado: 'estado',
 };
 
-// El UPDATE/DELETE filtra por empresa con un subselect sobre actas: MySQL no
-// admite JOIN y LIMIT juntos aquí, y así la condición viaja en la misma
-// sentencia en vez de depender de una comprobación previa.
-const PERTENECE_A_EMPRESA = 'acta_id IN (SELECT id FROM actas WHERE empresa_id = ?)';
+function perteneceACondicion(creadaPor) {
+  const condiciones = ['empresa_id = ?'];
+  if (creadaPor) condiciones.push('creada_por = ?');
+  return {
+    clausula: `acta_id IN (SELECT id FROM actas WHERE ${condiciones.join(' AND ')})`,
+    valores: creadaPor ? (empresaId) => [empresaId, creadaPor] : (empresaId) => [empresaId],
+  };
+}
 
-async function actualizar(id, empresaId, cambios) {
+async function actualizar(id, empresaId, cambios, creadaPor) {
   const columnas = [];
   const valores = [];
   for (const [campo, valor] of Object.entries(cambios)) {
@@ -104,32 +117,35 @@ async function actualizar(id, empresaId, cambios) {
     columnas.push(`${columna} = ?`);
     valores.push(campo === 'datosAdicionales' ? JSON.stringify(valor ?? []) : valor);
   }
-  if (columnas.length === 0) return obtenerPorId(id, empresaId);
-  valores.push(id, empresaId);
+  if (columnas.length === 0) return obtenerPorId(id, empresaId, creadaPor);
+  const pertenece = perteneceACondicion(creadaPor);
+  valores.push(id, ...pertenece.valores(empresaId));
   await pool.query(
-    `UPDATE items SET ${columnas.join(', ')} WHERE id = ? AND ${PERTENECE_A_EMPRESA}`,
+    `UPDATE items SET ${columnas.join(', ')} WHERE id = ? AND ${pertenece.clausula}`,
     valores
   );
-  return obtenerPorId(id, empresaId);
+  return obtenerPorId(id, empresaId, creadaPor);
 }
 
-async function actualizarOrden(id, empresaId, orden) {
+async function actualizarOrden(id, empresaId, orden, creadaPor) {
+  const pertenece = perteneceACondicion(creadaPor);
   try {
-    await pool.query(`UPDATE items SET orden = ? WHERE id = ? AND ${PERTENECE_A_EMPRESA}`, [
+    await pool.query(`UPDATE items SET orden = ? WHERE id = ? AND ${pertenece.clausula}`, [
       orden,
       id,
-      empresaId,
+      ...pertenece.valores(empresaId),
     ]);
-    return obtenerPorId(id, empresaId);
+    return obtenerPorId(id, empresaId, creadaPor);
   } catch (err) {
     relanzarSiDuplicado(err, orden);
   }
 }
 
-async function eliminar(id, empresaId) {
-  const item = await obtenerPorId(id, empresaId);
+async function eliminar(id, empresaId, creadaPor) {
+  const item = await obtenerPorId(id, empresaId, creadaPor);
   if (!item) return null;
-  await pool.query(`DELETE FROM items WHERE id = ? AND ${PERTENECE_A_EMPRESA}`, [id, empresaId]); // ON DELETE CASCADE limpia fotos
+  const pertenece = perteneceACondicion(creadaPor);
+  await pool.query(`DELETE FROM items WHERE id = ? AND ${pertenece.clausula}`, [id, ...pertenece.valores(empresaId)]); // ON DELETE CASCADE limpia fotos
   return item.fotos;
 }
 

@@ -6,30 +6,54 @@ const DEBOUNCE_MS = 400;
 
 // El listado del historico (para el contador "N guardadas" del TabBar y la
 // pantalla de Actas) y el detalle de una acta puntual.
-export function useHistorico(sesionActiva) {
+export function useHistorico(sesionActiva, { esAdmin = false } = {}) {
   const queryClient = useQueryClient();
   const [busqueda, setBusqueda] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
+  const [inspectorId, setInspectorId] = useState('');
+  const [pagina, setPagina] = useState(1);
   const debounceRef = useRef(null);
 
   // El contador del TabBar necesita el conteo desde el arranque, no solo
   // cuando el inspector entra a la pestaña Histórico — por eso enabled:
   // sesionActiva en vez de una carga manual on-demand.
   const {
-    data: actas = [],
+    data: respuesta,
     isLoading: cargando,
     error,
   } = useQuery({
-    queryKey: ['historico', busquedaDebounced],
-    queryFn: () => api.listarActas(busquedaDebounced ? { q: busquedaDebounced } : {}),
+    queryKey: ['historico', busquedaDebounced, inspectorId, pagina],
+    queryFn: () => api.listarActas({
+      ...(busquedaDebounced ? { q: busquedaDebounced } : {}),
+      ...(inspectorId ? { creadaPor: inspectorId } : {}),
+      pagina,
+    }),
     enabled: sesionActiva,
     placeholderData: (prev) => prev,
   });
 
+  const actas = respuesta?.actas || [];
+  const total = respuesta?.total ?? 0;
+  const totalPaginas = respuesta?.totalPaginas ?? 1;
+
+  // El filtro por inspector solo tiene sentido para el admin, que ve el
+  // histórico mezclado de toda la empresa.
+  const { data: inspectores = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => api.listarUsuarios(),
+    enabled: sesionActiva && esAdmin,
+  });
+
   const cambiarBusqueda = useCallback((valor) => {
     setBusqueda(valor);
+    setPagina(1);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setBusquedaDebounced(valor), DEBOUNCE_MS);
+  }, []);
+
+  const cambiarInspector = useCallback((valor) => {
+    setInspectorId(valor);
+    setPagina(1);
   }, []);
 
   const refrescar = useCallback(() => {
@@ -38,10 +62,17 @@ export function useHistorico(sesionActiva) {
 
   return {
     actas,
+    total,
+    pagina,
+    totalPaginas,
+    onPagina: setPagina,
     cargando,
     error: error?.message || '',
     busqueda,
     onBusqueda: cambiarBusqueda,
+    inspectores,
+    inspectorId,
+    onInspectorId: cambiarInspector,
     refrescar,
   };
 }
