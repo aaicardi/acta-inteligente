@@ -52,6 +52,7 @@ export default function HistoricoDetalle({ acta, cargando, error, descargando, o
             <Campo etiqueta="Fecha" valor={formatearFecha(acta.fecha)} mono />
             <Campo etiqueta="Horas" valor={`${acta.horaInicio || '--:--'} → ${acta.horaFin || '--:--'}`} mono />
             <Campo etiqueta="Cliente" valor={acta.cliente} ancho="wide" vacio={!acta.cliente} />
+            <Campo etiqueta="Inspector" valor={acta.creadaPorNombre} vacio={!acta.creadaPorNombre} />
             {acta.observaciones && (
               <Campo etiqueta="Observaciones" valor={acta.observaciones} ancho="wide" mono={false} />
             )}

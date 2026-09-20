@@ -6,10 +6,11 @@ const DEBOUNCE_MS = 400;
 
 // El listado del historico (para el contador "N guardadas" del TabBar y la
 // pantalla de Actas) y el detalle de una acta puntual.
-export function useHistorico(sesionActiva) {
+export function useHistorico(sesionActiva, { esAdmin = false } = {}) {
   const queryClient = useQueryClient();
   const [busqueda, setBusqueda] = useState('');
   const [busquedaDebounced, setBusquedaDebounced] = useState('');
+  const [inspectorId, setInspectorId] = useState('');
   const debounceRef = useRef(null);
 
   // El contador del TabBar necesita el conteo desde el arranque, no solo
@@ -20,10 +21,21 @@ export function useHistorico(sesionActiva) {
     isLoading: cargando,
     error,
   } = useQuery({
-    queryKey: ['historico', busquedaDebounced],
-    queryFn: () => api.listarActas(busquedaDebounced ? { q: busquedaDebounced } : {}),
+    queryKey: ['historico', busquedaDebounced, inspectorId],
+    queryFn: () => api.listarActas({
+      ...(busquedaDebounced ? { q: busquedaDebounced } : {}),
+      ...(inspectorId ? { creadaPor: inspectorId } : {}),
+    }),
     enabled: sesionActiva,
     placeholderData: (prev) => prev,
+  });
+
+  // El filtro por inspector solo tiene sentido para el admin, que ve el
+  // histórico mezclado de toda la empresa.
+  const { data: inspectores = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => api.listarUsuarios(),
+    enabled: sesionActiva && esAdmin,
   });
 
   const cambiarBusqueda = useCallback((valor) => {
@@ -42,6 +54,9 @@ export function useHistorico(sesionActiva) {
     error: error?.message || '',
     busqueda,
     onBusqueda: cambiarBusqueda,
+    inspectores,
+    inspectorId,
+    onInspectorId: setInspectorId,
     refrescar,
   };
 }

@@ -63,7 +63,7 @@ export default function App() {
     abrirActaExistente,
   } = useActaEnCurso(!!sesion && !esAdmin);
 
-  const historico = useHistorico(!!sesion);
+  const historico = useHistorico(!!sesion, { esAdmin });
   const {
     data: actaDetalle,
     isLoading: cargandoDetalle,
@@ -258,6 +258,10 @@ export default function App() {
         onBusqueda={historico.onBusqueda}
         onAbrir={abrirActaHistorico}
         tabBar={tabBar}
+        esAdmin={esAdmin}
+        inspectores={historico.inspectores}
+        inspectorId={historico.inspectorId}
+        onInspectorId={historico.onInspectorId}
       />
     ) : (
       <HistoricoDetalle

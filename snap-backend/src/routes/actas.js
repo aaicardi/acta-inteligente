@@ -57,8 +57,8 @@ router.get('/actas/en-curso', async (req, res) => {
 
 router.get('/actas', async (req, res) => {
   try {
-    const { q, estado } = req.query;
-    const actas = await actasDb.listar(req.auth.empresaId, { q, estado });
+    const { q, estado, creadaPor } = req.query;
+    const actas = await actasDb.listar(req.auth.empresaId, { q, estado, creadaPor });
     return res.json(actas);
   } catch (err) {
     return manejarError(req, res, err, 'No se pudo listar el histórico de actas.');

@@ -185,10 +185,11 @@ export async function generarActa(actaId) {
   return manejarRespuesta(res, 'No se pudo generar el acta', (r) => r.blob());
 }
 
-export function listarActas({ q, estado } = {}) {
+export function listarActas({ q, estado, creadaPor } = {}) {
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (estado) params.set('estado', estado);
+  if (creadaPor) params.set('creadaPor', creadaPor);
   const query = params.toString();
   return solicitar(`/actas${query ? `?${query}` : ''}`, { mensajePorDefecto: 'No se pudo listar el histórico' });
 }

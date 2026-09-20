@@ -9,6 +9,7 @@ function aCamelCase(fila) {
     id: fila.id,
     empresaId: fila.empresa_id,
     creadaPor: fila.creada_por,
+    creadaPorNombre: fila.creada_por_nombre,
     estado: fila.estado,
     doNo: fila.do_no,
     cliente: fila.cliente,
@@ -53,7 +54,13 @@ async function crear(empresaId, usuarioId) {
 }
 
 async function obtenerPorId(id, empresaId) {
-  const [filas] = await pool.query('SELECT * FROM actas WHERE id = ? AND empresa_id = ?', [id, empresaId]);
+  const [filas] = await pool.query(
+    `SELECT a.*, u.nombre AS creada_por_nombre
+     FROM actas a
+     LEFT JOIN usuarios u ON u.id = a.creada_por
+     WHERE a.id = ? AND a.empresa_id = ?`,
+    [id, empresaId]
+  );
   if (filas.length === 0) return null;
   const acta = aCamelCase(filas[0]);
   acta.items = await items.listarPorActa(id);
@@ -70,12 +77,16 @@ async function obtenerEnCurso(empresaId, usuarioId) {
   return obtenerPorId(filas[0].id, empresaId);
 }
 
-async function listar(empresaId, { q, estado } = {}) {
+async function listar(empresaId, { q, estado, creadaPor } = {}) {
   const condiciones = ['a.empresa_id = ?'];
   const valores = [empresaId];
   if (estado) {
     condiciones.push('a.estado = ?');
     valores.push(estado);
+  }
+  if (creadaPor) {
+    condiciones.push('a.creada_por = ?');
+    valores.push(creadaPor);
   }
   if (q) {
     condiciones.push('(a.do_no LIKE ? OR a.cliente LIKE ?)');
@@ -83,10 +94,11 @@ async function listar(empresaId, { q, estado } = {}) {
   }
   const where = `WHERE ${condiciones.join(' AND ')}`;
   const [filas] = await pool.query(
-    `SELECT a.*,
+    `SELECT a.*, u.nombre AS creada_por_nombre,
             COUNT(DISTINCT i.id) AS total_items,
             COUNT(DISTINCT f.id) AS total_fotos
      FROM actas a
+     LEFT JOIN usuarios u ON u.id = a.creada_por
      LEFT JOIN items i ON i.acta_id = a.id
      LEFT JOIN fotos f ON f.item_id = i.id
      ${where}
