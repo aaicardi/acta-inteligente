@@ -248,10 +248,14 @@ export default function App() {
       </div>
     );
   } else if (seccion === 'historico') {
-    const tabBar = <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />;
+    const tabBar = <TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.total} ocultarInspeccion={esAdmin} />;
     contenido = vistaHistorico === 'lista' ? (
       <Historico
         actas={historico.actas}
+        total={historico.total}
+        pagina={historico.pagina}
+        totalPaginas={historico.totalPaginas}
+        onPagina={historico.onPagina}
         cargando={historico.cargando}
         error={historico.error}
         busqueda={historico.busqueda}
@@ -276,7 +280,7 @@ export default function App() {
     );
   } else if (pantalla === 'inicio') {
     contenido = (
-      <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />}>
+      <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.total} ocultarInspeccion={esAdmin} />}>
         <div
           style={{
             flex: 1,
@@ -445,7 +449,7 @@ export default function App() {
     const numerosUsados = items.map((it) => it.orden);
 
     contenido = (
-    <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.actas.length} ocultarInspeccion={esAdmin} />}>
+    <AppShell tabBar={<TabBar activa={seccion} onCambiar={manejarCambioTab} totalActas={historico.total} ocultarInspeccion={esAdmin} />}>
       <AppHeader
         titulo="Acta en curso"
         meta={`D.O. ${encabezado.doNo || '—'} · ${items.length} ítem${items.length === 1 ? '' : 's'}`}

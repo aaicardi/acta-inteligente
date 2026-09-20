@@ -1,10 +1,10 @@
 import { AppHeader, Tarjeta, EstadoBadge, AppShell } from './ds';
 import { formatearFecha } from '../lib/formato';
 
-export default function Historico({ actas, cargando, error, busqueda, onBusqueda, onAbrir, tabBar, esAdmin, inspectores = [], inspectorId = '', onInspectorId }) {
+export default function Historico({ actas, total = actas.length, pagina = 1, totalPaginas = 1, onPagina, cargando, error, busqueda, onBusqueda, onAbrir, tabBar, esAdmin, inspectores = [], inspectorId = '', onInspectorId }) {
   return (
     <AppShell tabBar={tabBar}>
-      <AppHeader titulo="Mis actas" meta={`${actas.length} acta${actas.length === 1 ? '' : 's'}`} />
+      <AppHeader titulo="Mis actas" meta={`${total} acta${total === 1 ? '' : 's'}`} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s4)' }}>
         <input
@@ -93,6 +93,46 @@ export default function Historico({ actas, cargando, error, busqueda, onBusqueda
                 </Tarjeta>
               </div>
             ))}
+          </div>
+        )}
+
+        {!cargando && totalPaginas > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s3)', padding: 'var(--s2) 0' }}>
+            <button
+              type="button"
+              onClick={() => onPagina(pagina - 1)}
+              disabled={pagina <= 1}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-13)',
+                color: pagina <= 1 ? 'var(--grafito)' : 'var(--boli)',
+                background: 'none',
+                border: 'none',
+                cursor: pagina <= 1 ? 'default' : 'pointer',
+                padding: '6px 10px',
+              }}
+            >
+              ← Anterior
+            </button>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 'var(--t-11)', color: 'var(--grafito)' }}>
+              Página {pagina} de {totalPaginas}
+            </span>
+            <button
+              type="button"
+              onClick={() => onPagina(pagina + 1)}
+              disabled={pagina >= totalPaginas}
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 'var(--t-13)',
+                color: pagina >= totalPaginas ? 'var(--grafito)' : 'var(--boli)',
+                background: 'none',
+                border: 'none',
+                cursor: pagina >= totalPaginas ? 'default' : 'pointer',
+                padding: '6px 10px',
+              }}
+            >
+              Siguiente →
+            </button>
           </div>
         )}
       </div>
