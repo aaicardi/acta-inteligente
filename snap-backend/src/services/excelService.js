@@ -2,19 +2,43 @@ const ExcelJS = require('exceljs');
 const path = require('path');
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'ACTA_compras_.xlsx');
+const PLANTILLA_BASE_PATH = path.join(__dirname, '..', '..', 'templates', 'PLANTILLA_BASE.xlsx');
 const SHEET_NAME = 'Acta';
 
 // Ver plantilla.md para la explicación completa de estos números de fila.
 // Toda plantilla (la default o una subida por una empresa, ver 3.5 del spec)
-// DEBE respetar este mismo esqueleto de filas: el motor que redimensiona la
-// tabla de items, clona estilos y reconstruye merges depende de que estas
-// filas existan en esta posicion exacta. Una plantilla personalizada solo
-// puede cambiar textos fijos, logo, colores — nunca mover estas filas.
+// DEBE respetar este esqueleto: encabezado en las filas 1-12 (posicion fija),
+// tabla de items desde la fila 13 y pie de pagina (espaciador, 2 de
+// observaciones, 2 de firmas) justo despues. Solo el numero de filas de items
+// es libre (ver detectarLayout). Puede cambiar textos, logo y colores.
 const HEADER_ROW = 12;
 const FIRST_ITEM_ROW = 13;
-const ORIGINAL_ITEM_ROWS = 21; // filas 13-33 en la plantilla original
-const STYLE_TEMPLATE_ROW = 33; // fila plana (sin datos) usada para clonar estilo de ítems nuevos
-const FOOTER_START_ROW = FIRST_ITEM_ROW + ORIGINAL_ITEM_ROWS; // 34 en la plantilla original
+const ERROR_ESTRUCTURA = 'La plantilla debe conservar la misma estructura de filas (encabezado, tabla de ítems y pie de página) que la plantilla original.';
+
+// La cantidad de filas de ítems NO es fija: la plantilla original trae 21
+// (pie en la fila 34) pero una plantilla subida por una empresa puede traer
+// menos o más. Se detecta buscando la fila "OBSERVACIONES" del pie de página:
+// la fila anterior es el espaciador y la anterior a esa es la última fila de
+// ítems, que se usa como fila plana para clonar estilo.
+function detectarLayout(worksheet) {
+  let obs1Row = null;
+  for (let n = FIRST_ITEM_ROW; n <= worksheet.rowCount; n++) {
+    const valor = worksheet.getCell(`A${n}`).value;
+    if (typeof valor === 'string' && valor.trim().toUpperCase().startsWith('OBSERVACIONES')) {
+      obs1Row = n;
+      break;
+    }
+  }
+  if (!obs1Row) return null;
+
+  const footerStartRow = obs1Row - 1;
+  const originalItemRows = footerStartRow - FIRST_ITEM_ROW;
+  if (originalItemRows < 1) return null;
+  // Observaciones (2) + firmas (2) deben existir debajo del espaciador.
+  if (worksheet.rowCount < footerStartRow + 4) return null;
+
+  return { footerStartRow, originalItemRows, styleTemplateRow: footerStartRow - 1 };
+}
 
 function captureRow(worksheet, rowNumber) {
   const row = worksheet.getRow(rowNumber);
@@ -38,12 +62,10 @@ function applyRow(worksheet, rowNumber, captured, overrideValues) {
 }
 
 // Reglas minimas que cualquier plantilla debe cumplir para que el motor de
-// generacion no escriba en celdas equivocadas: la hoja 'Acta', suficientes
-// filas para contener el esqueleto completo, y al menos una fila de ejemplo
-// con contenido en la zona de items y en la de pie de pagina (una plantilla
-// sin esas filas rellenas sugiere que no tiene esa estructura). La fila
-// STYLE_TEMPLATE_ROW (33) NO se valida con contenido: por diseño es la fila
-// "plana" vacia que el motor clona para dar estilo a items nuevos.
+// generacion no escriba en celdas equivocadas: la hoja 'Acta' y un pie de
+// pagina reconocible (detectarLayout) con al menos una fila de items antes.
+// La ultima fila de items NO necesita contenido: es la fila "plana" que el
+// motor clona para dar estilo a items nuevos.
 // No valida el CONTENIDO de las celdas del encabezado (B6, D6, etc.) — el
 // admin puede vaciarlas o poner otro texto ahi, es lo que se sobreescribe.
 function validarPlantilla(workbook) {
@@ -52,14 +74,7 @@ function validarPlantilla(workbook) {
     return `La plantilla debe tener una hoja llamada "${SHEET_NAME}".`;
   }
 
-  if (worksheet.rowCount < FOOTER_START_ROW + 4) {
-    return 'La plantilla debe conservar la misma estructura de filas (encabezado, tabla de ítems y pie de página) que la plantilla original.';
-  }
-
-  const filaVacia = (n) => worksheet.getRow(n).values.length === 0;
-  if (filaVacia(FIRST_ITEM_ROW) || filaVacia(FOOTER_START_ROW + 1)) {
-    return 'La plantilla debe conservar la misma estructura de filas (encabezado, tabla de ítems y pie de página) que la plantilla original.';
-  }
+  if (!detectarLayout(worksheet)) return ERROR_ESTRUCTURA;
 
   return null;
 }
@@ -75,29 +90,31 @@ async function generarActa({ encabezado, items }, fuentePlantilla = TEMPLATE_PAT
     await workbook.xlsx.readFile(fuentePlantilla);
   }
   const worksheet = workbook.getWorksheet(SHEET_NAME);
+  const { footerStartRow, originalItemRows, styleTemplateRow } = detectarLayout(worksheet) || {};
+  if (!footerStartRow) throw new Error(ERROR_ESTRUCTURA);
 
   // 1. Capturar estilos del pie de página ANTES de tocar la tabla de ítems.
-  const spacerTpl = captureRow(worksheet, FOOTER_START_ROW);
-  const obs1Tpl = captureRow(worksheet, FOOTER_START_ROW + 1);
-  const obs2Tpl = captureRow(worksheet, FOOTER_START_ROW + 2);
-  const firmas1Tpl = captureRow(worksheet, FOOTER_START_ROW + 3);
-  const firmas2Tpl = captureRow(worksheet, FOOTER_START_ROW + 4);
-  const itemStyleTpl = captureRow(worksheet, STYLE_TEMPLATE_ROW);
+  const spacerTpl = captureRow(worksheet, footerStartRow);
+  const obs1Tpl = captureRow(worksheet, footerStartRow + 1);
+  const obs2Tpl = captureRow(worksheet, footerStartRow + 2);
+  const firmas1Tpl = captureRow(worksheet, footerStartRow + 3);
+  const firmas2Tpl = captureRow(worksheet, footerStartRow + 4);
+  const itemStyleTpl = captureRow(worksheet, styleTemplateRow);
 
-  // 2. Desmergear todo lo que esté en la zona de pie de página original (fila >= FOOTER_START_ROW).
+  // 2. Desmergear todo lo que esté en la zona de pie de página original (fila >= footerStartRow).
   const mergesAEliminar = worksheet.model.merges.filter((merge) => {
     const startRow = parseInt(merge.split(':')[0].match(/\d+/)[0], 10);
-    return startRow >= FOOTER_START_ROW;
+    return startRow >= footerStartRow;
   });
   mergesAEliminar.forEach((merge) => worksheet.unMergeCells(merge));
 
   const n = items.length;
 
   // 3. Redimensionar la región de ítems (13..33, 21 filas) a n filas.
-  if (n < ORIGINAL_ITEM_ROWS) {
-    worksheet.spliceRows(FIRST_ITEM_ROW + n, ORIGINAL_ITEM_ROWS - n);
-  } else if (n > ORIGINAL_ITEM_ROWS) {
-    worksheet.duplicateRow(STYLE_TEMPLATE_ROW, n - ORIGINAL_ITEM_ROWS, true);
+  if (n < originalItemRows) {
+    worksheet.spliceRows(FIRST_ITEM_ROW + n, originalItemRows - n);
+  } else if (n > originalItemRows) {
+    worksheet.duplicateRow(styleTemplateRow, n - originalItemRows, true);
   }
 
   // 4. Rellenar filas de ítems.
@@ -158,4 +175,4 @@ async function validarPlantillaBuffer(buffer) {
   }
 }
 
-module.exports = { generarActa, validarPlantillaBuffer, TEMPLATE_PATH };
+module.exports = { generarActa, validarPlantillaBuffer, TEMPLATE_PATH, PLANTILLA_BASE_PATH };

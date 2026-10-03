@@ -58,6 +58,16 @@ router.get('/empresa/plantilla', async (req, res) => {
 });
 
 
+// Plantilla en blanco (sin logo ni datos) como punto de partida para que el
+// admin arme la suya y la suba con POST /empresa/plantilla.
+router.get('/empresa/plantilla/base', (req, res) => {
+  res.download(excelService.PLANTILLA_BASE_PATH, 'plantilla.xlsx', (err) => {
+    if (err && !res.headersSent) {
+      manejarError(req, res, err, 'No se pudo descargar la plantilla base.');
+    }
+  });
+});
+
 router.post('/empresa/plantilla', subidaPlantilla.single('archivo'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Se requiere el archivo de la plantilla (.xlsx).' });
