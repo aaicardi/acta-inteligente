@@ -6,7 +6,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const ExcelJS = require('exceljs');
 
-const { generarActa } = require('../src/services/excelService');
+const fs = require('fs');
+const { generarActa, validarPlantillaBuffer, PLANTILLA_BASE_PATH } = require('../src/services/excelService');
 
 function encabezado(overrides = {}) {
   return {
@@ -116,4 +117,29 @@ test('las observaciones del encabezado quedan en el pie de pagina', async () => 
   const filaObservaciones = 13 + 1 + 1;
   const texto = String(hoja.getCell(`A${filaObservaciones}`).value || '');
   assert.match(texto, /Mercancía en buen estado/);
+});
+
+// La plantilla base descargable por el admin trae solo 2 filas de items (no
+// las 21 de la original): el motor debe detectar donde empieza el pie.
+test('la plantilla base (descargable) es valida y genera el pie en su sitio', async () => {
+  const base = fs.readFileSync(PLANTILLA_BASE_PATH);
+  assert.strictEqual(await validarPlantillaBuffer(base), null);
+
+  for (const n of [1, 2, 5, 30]) {
+    const items = Array.from({ length: n }, (_, i) => item({ referencia: `R${i + 1}` }));
+    const buffer = await generarActa({ encabezado: encabezado(), items }, base);
+    const ws = await leerHoja(buffer);
+    assert.strictEqual(ws.getCell(`A${13 + n - 1}`).value, n);
+    assert.match(String(ws.getCell(`A${13 + n + 1}`).value), /^OBSERVACIONES: Sin novedad/);
+    assert.strictEqual(ws.getCell(`A${13 + n + 3}`).value, 'FIRMAS');
+    assert.ok(ws.model.merges.includes(`A${13 + n + 1}:F${13 + n + 2}`));
+  }
+});
+
+test('una plantilla sin pie de pagina reconocible se rechaza', async () => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Acta');
+  ws.getCell('A12').value = 'ITEM No';
+  const buffer = await wb.xlsx.writeBuffer();
+  assert.match(await validarPlantillaBuffer(buffer), /estructura de filas/);
 });

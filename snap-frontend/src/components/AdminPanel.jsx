@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { AppHeader, Boton, Tarjeta, EstadoBadge, Campo } from './ds';
 import { useUsuarios, useConsumoIa, useAuditoria, usePlantilla } from '../hooks/useAdmin';
 import { formatearFechaHora as formatearFecha } from '../lib/formato';
+import { descargarPlantillaBase } from '../lib/api';
 
 const TABS = [
   { id: 'usuarios', label: 'Usuarios' },
@@ -145,6 +146,7 @@ function SeccionConsumo() {
 function SeccionPlantilla() {
   const { personalizada, cargando, subir, restaurar } = usePlantilla();
   const [error, setError] = useState('');
+  const [descargando, setDescargando] = useState(false);
   const inputRef = useRef(null);
 
   async function manejarArchivo(e) {
@@ -168,6 +170,26 @@ function SeccionPlantilla() {
     }
   }
 
+  async function manejarDescargaBase() {
+    setError('');
+    setDescargando(true);
+    try {
+      const blob = await descargarPlantillaBase();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'plantilla.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDescargando(false);
+    }
+  }
+
   if (cargando) return <p style={{ color: 'var(--grafito)', fontSize: 'var(--t-14)' }}>Cargando…</p>;
 
   return (
@@ -180,7 +202,8 @@ function SeccionPlantilla() {
         </div>
         <p style={{ fontSize: 'var(--t-13)', color: 'var(--tinta-70)', lineHeight: 'var(--alto-nota)', marginTop: 'var(--s2)' }}>
           El archivo debe conservar exactamente la misma estructura de filas que la plantilla original (encabezado,
-          tabla de ítems y pie de página) — solo puede cambiar textos fijos, logo y colores.
+          tabla de ítems y pie de página) — solo puede cambiar textos fijos, logo y colores. Descarga la plantilla
+          base, personalízala (logo, textos, colores) y súbela.
         </p>
       </Tarjeta>
 
@@ -193,6 +216,9 @@ function SeccionPlantilla() {
         style={{ display: 'none' }}
         onChange={manejarArchivo}
       />
+      <Boton variante="secundaria" talla="md" disabled={descargando} onClick={manejarDescargaBase}>
+        {descargando ? 'Descargando…' : 'Descargar plantilla base (.xlsx)'}
+      </Boton>
       <Boton variante="primaria" talla="md" disabled={subir.isPending} onClick={() => inputRef.current?.click()}>
         {subir.isPending ? 'Subiendo…' : 'Subir plantilla (.xlsx)'}
       </Boton>

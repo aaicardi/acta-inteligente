@@ -267,6 +267,11 @@ export async function subirPlantilla(archivo) {
   return manejarRespuesta(res, 'No se pudo subir la plantilla');
 }
 
+export async function descargarPlantillaBase() {
+  const res = await fetch(`${BASE_URL}/empresa/plantilla/base`, { headers: cabeceraAuth() });
+  return manejarRespuesta(res, 'No se pudo descargar la plantilla base', (r) => r.blob());
+}
+
 export function restaurarPlantilla() {
   return solicitar('/empresa/plantilla', { method: 'DELETE', mensajePorDefecto: 'No se pudo restaurar la plantilla' });
 }
